@@ -29,19 +29,16 @@
       <button data-section="about" class="scroll-link text-sm text-gray-700 hover:underline nav-link">¿Qué hacemos?</button>
       <button data-section="projects" class="scroll-link text-sm text-gray-700 hover:underline nav-link">Proyectos</button>
       <button data-section="contact" class="scroll-link text-sm text-gray-700 hover:underline nav-link">Contáctanos</button>
-      <!-- Botón "Crear campaña" visible solo para usuarios autenticados (se mostrará mediante JS) -->
-      <button id="createCampaignBtn" data-section="student-panel" class="hidden scroll-link text-sm text-gray-700 hover:underline nav-link">Crear campaña</button>
       <div id="userBox" class="hidden relative">
         <button id="userMenuBtn" class="text-sm text-blue-700 font-semibold flex items-center gap-2">
           <span id="userNameLabel"></span>
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
         <div id="userDropdown" class="absolute right-0 mt-2 bg-white border rounded shadow-md w-48 hidden z-50 p-4">
           <p class="text-sm text-gray-700 font-semibold" id="userEmailLabel"></p>
-          <button id="profileConfigBtn" class="w-full text-sm text-blue-600 hover:underline mb-2">Configuración de Perfil</button>
-          <button id="logoutBtn" class="mt-2 bg-red-500 hover:bg-red-600 text-white text-sm px-3 py-1 rounded w-full">Cerrar sesión</button>
+          <button id="logoutBtn" class="mt-4 bg-red-500 hover:bg-red-600 text-white text-sm px-3 py-1 rounded w-full">Cerrar sesión</button>
         </div>
       </div>
     </nav>
@@ -88,17 +85,17 @@
     <section id="login" class="hidden max-w-md mx-auto mt-10 p-6 bg-white rounded shadow-lg border">
       <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">Inicia sesión en Platformstudentctg</h2>
       <form id="loginForm" class="space-y-4">
-        <input name="username" type="email" placeholder="Correo electrónico" required class="w-full px-4 py-3 border rounded-md"/>
-        <input name="password" type="password" placeholder="Contraseña" required class="w-full px-4 py-3 border rounded-md"/>
+        <input name="username" type="email" placeholder="Correo electrónico" required class="w-full px-4 py-3 border rounded-md" />
+        <input name="password" type="password" placeholder="Contraseña" required class="w-full px-4 py-3 border rounded-md" />
         <button type="submit" class="w-full bg-green-600 text-white font-semibold py-2 rounded hover:bg-green-700">Continuar</button>
       </form>
       <div class="flex items-center my-4">
-        <hr class="flex-1 border-t"/>
+        <hr class="flex-1 border-t" />
         <span class="mx-2 text-sm text-gray-400">o</span>
-        <hr class="flex-1 border-t"/>
+        <hr class="flex-1 border-t" />
       </div>
       <button id="googleBtn" type="button" class="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
-        <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" class="w-5 h-5"/>
+        <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" class="w-5 h-5" />
         Continuar con Google
       </button>
     </section>
@@ -107,9 +104,9 @@
     <section id="register" class="hidden max-w-md mx-auto mt-10 p-6 bg-white rounded shadow-lg border">
       <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">Crea tu cuenta</h2>
       <form id="registerForm" class="space-y-4">
-        <input name="username" type="text" placeholder="Nombre completo" required class="w-full px-4 py-3 border rounded-md"/>
-        <input name="email" type="email" placeholder="Correo electrónico" required class="w-full px-4 py-3 border rounded-md"/>
-        <input name="password" type="password" placeholder="Contraseña segura" required class="w-full px-4 py-3 border rounded-md"/>
+        <input name="username" type="text" placeholder="Nombre completo" required class="w-full px-4 py-3 border rounded-md" />
+        <input name="email" type="email" placeholder="Correo electrónico" required class="w-full px-4 py-3 border rounded-md" />
+        <input name="password" type="password" placeholder="Contraseña segura" required class="w-full px-4 py-3 border rounded-md" />
         <select name="role" class="w-full px-4 py-3 border rounded-md text-gray-700">
           <option value="estudiante">Estudiante</option>
           <option value="patrocinador">Patrocinador</option>
@@ -118,119 +115,30 @@
       </form>
     </section>
 
-    <!-- PANEL DEL ESTUDIANTE: Solo visible cuando sesión iniciada -->
-    <section id="student-panel" class="hidden max-w-4xl mx-auto mt-10 p-6 bg-white rounded shadow-lg">
-      <h2 class="text-3xl font-bold mb-4">Panel del Estudiante</h2>
-      
-      <!-- Listado de Campañas de otros estudiantes -->
-      <div class="mb-8">
-        <h3 class="text-2xl font-semibold mb-2">Campañas de otros estudiantes</h3>
-        <div id="public-campaigns" class="grid gap-4">
-          <!-- Se renderizarán las campañas públicas de otros -->
+    <!-- PANEL (Subida de Proyecto) -->
+    <section id="panel" class="hidden max-w-4xl mx-auto mt-10 p-6 bg-white rounded shadow-lg">
+      <h2 class="text-2xl font-bold text-green-700 mb-4">Sube tu Proyecto Académico</h2>
+      <form id="uploadForm" class="space-y-4">
+        <input name="projectName" type="text" placeholder="Nombre del Proyecto" required class="w-full p-2 border rounded" />
+        <textarea name="description" rows="4" placeholder="Descripción del Proyecto" required class="w-full p-2 border rounded"></textarea>
+        <input name="goal" type="number" placeholder="Meta de Financiación (COP)" required class="w-full p-2 border rounded" />
+        <!-- Cambiamos a inputs de tipo file para subir video e imagen -->
+        <input name="video" type="file" accept="video/*" placeholder="Sube un video (opcional)" class="w-full p-2 border rounded" />
+        <input name="image" type="file" accept="image/*" placeholder="Sube una imagen" required class="w-full p-2 border rounded" />
+        <input type="hidden" name="campaignId" />
+        <div class="flex gap-2">
+          <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">Guardar Proyecto</button>
+          <button type="button" id="cancelEditBtn" class="hidden border border-gray-400 text-gray-600 px-4 py-2 rounded">Cancelar Edición</button>
         </div>
-      </div>
-      
-      <!-- Listado de Mis Campañas -->
-      <div class="mb-8">
-        <h3 class="text-2xl font-semibold mb-2">Mis Campañas</h3>
-        <div id="my-campaigns" class="grid gap-4">
-          <!-- Se renderizarán las campañas propias del usuario -->
-        </div>
-      </div>
-      
-      <!-- Módulo para Crear Campaña (Formulario Extendido) -->
-      <div id="create-campaign-module">
-        <h3 class="text-2xl font-semibold mb-2">Crear Campaña</h3>
-        <p class="mb-2 text-sm text-gray-600">
-          Ingresa todos los datos de tu emprendimiento. La campaña se guardará como privada y se podrá publicar al pagar la suscripción mensual.
-        </p>
-        <div id="campaign-form-container">
-          <form id="campaign-form" class="space-y-4">
-            <div>
-              <label for="campaign-title" class="block font-semibold">Título</label>
-              <input type="text" id="campaign-title" name="title" class="w-full border p-2 rounded" required>
-            </div>
-            <div>
-              <label for="campaign-description" class="block font-semibold">Descripción</label>
-              <textarea id="campaign-description" name="description" class="w-full border p-2 rounded" required></textarea>
-            </div>
-            <div>
-              <label for="campaign-goal" class="block font-semibold">Meta (COP)</label>
-              <input type="number" id="campaign-goal" name="goal" class="w-full border p-2 rounded" required>
-            </div>
-            <div>
-              <label for="campaign-image" class="block font-semibold">Imagen</label>
-              <input type="text" id="campaign-image" name="image" placeholder="URL de la imagen" class="w-full border p-2 rounded" required>
-            </div>
-            <div>
-              <label for="campaign-video" class="block font-semibold">Video</label>
-              <input type="text" id="campaign-video" name="video" placeholder="URL del video (opcional)" class="w-full border p-2 rounded">
-            </div>
-            <div>
-              <label for="campaign-sector" class="block font-semibold">Sector</label>
-              <input type="text" id="campaign-sector" name="sector" placeholder="Sector del emprendimiento" class="w-full border p-2 rounded" required>
-            </div>
-            <div>
-              <label for="campaign-anio" class="block font-semibold">Año de Inicio</label>
-              <input type="number" id="campaign-anio" name="anio" placeholder="Año de inicio" class="w-full border p-2 rounded" required>
-            </div>
-            <div>
-              <label for="campaign-web" class="block font-semibold">Sitio Web</label>
-              <input type="text" id="campaign-web" name="web" placeholder="URL del sitio web (opcional)" class="w-full border p-2 rounded">
-            </div>
-            <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded">
-              Crear Campaña
-            </button>
-          </form>
-        </div>
-      </div>
-    </section>
-
-    <!-- CONFIGURACIÓN DE PERFIL -->
-    <section id="profile-config" class="hidden max-w-md mx-auto mt-10 p-6 bg-white rounded shadow-lg border">
-      <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">Configuración de Perfil</h2>
-      <form id="profile-form" class="space-y-4">
-        <div>
-          <label for="profile-nombres" class="block font-semibold">Nombres</label>
-          <input type="text" id="profile-nombres" name="nombres" class="w-full border p-2 rounded" required>
-        </div>
-        <div>
-          <label for="profile-apellidos" class="block font-semibold">Apellidos</label>
-          <input type="text" id="profile-apellidos" name="apellidos" class="w-full border p-2 rounded" required>
-        </div>
-        <div>
-          <label for="profile-fecha-nac" class="block font-semibold">Fecha de Nacimiento</label>
-          <input type="date" id="profile-fecha-nac" name="fechaNacimiento" class="w-full border p-2 rounded" required>
-        </div>
-        <div>
-          <label for="profile-institucion" class="block font-semibold">Institución</label>
-          <input type="text" id="profile-institucion" name="institucion" placeholder="Empresa o Universidad" class="w-full border p-2 rounded" required>
-        </div>
-        <div>
-          <label for="profile-metodos-pago" class="block font-semibold">Métodos de Pago</label>
-          <input type="text" id="profile-metodos-pago" name="metodosPago" placeholder="Datos de tus métodos de pago" class="w-full border p-2 rounded">
-        </div>
-        <button type="submit" class="w-full bg-green-600 text-white font-semibold py-2 rounded hover:bg-green-700">
-          Actualizar Perfil
-        </button>
       </form>
+      <div class="mt-8">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Mis Campañas</h3>
+        <div id="campaignList" class="grid gap-6"></div>
+      </div>
     </section>
-    
   </main>
 
-  <!-- MODAL: Selección de Rol (para usuarios sin rol definido, ej. Google) -->
-  <div id="roleSelectionModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-    <div class="bg-white p-6 rounded max-w-sm w-full shadow-lg text-center">
-      <h3 class="text-xl font-semibold mb-4">Selecciona tu rol</h3>
-      <p class="mb-4 text-sm text-gray-600">Por favor, indica si eres Estudiante o Patrocinador.</p>
-      <div class="flex justify-center gap-4">
-        <button id="selectEstudianteBtn" class="bg-blue-600 text-white px-4 py-2 rounded">Estudiante</button>
-        <button id="selectPatrocinadorBtn" class="bg-green-600 text-white px-4 py-2 rounded">Patrocinador</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL: Postulación a un Proyecto -->
+  <!-- MODAL (Postulación a un Proyecto) -->
   <div id="projectModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
     <div class="bg-white p-6 rounded max-w-md w-full shadow-lg">
       <h3 class="text-xl font-semibold mb-2">Postularme al Proyecto</h3>
@@ -252,7 +160,20 @@
   <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-storage-compat.js"></script>
-  <!-- Script de la aplicación (asegúrate de que app.js esté en la misma carpeta) -->
-  <script src="app.js"></script>
+  <script>
+    // Configuración de Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyAUs8s8fevqPnS4lw98C5Wz-dCb-2E6Y7w",
+      authDomain: "platformstudentctg.firebaseapp.com",
+      projectId: "platformstudentctg",
+      storageBucket: "platformstudentctg.appspot.com",
+      messagingSenderId: "897864689005",
+      appId: "1:897864689005:web:88e3cedbd474573a6ea664",
+      measurementId: "G-H975WNCZHX"
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
+  <!-- Script de la aplicación -->
+  <script src="app.js" defer></script>
 </body>
 </html>
