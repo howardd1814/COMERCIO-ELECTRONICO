@@ -1,420 +1,445 @@
-// ============================================
-// app.js - Versión Actualizada
-// ============================================
+/* ================================
+   app.js - Versión para aplicación estática con Firebase
+   ================================ */
 
-// Variables globales
-let currentUser = null; // Datos del usuario autenticado
-let publicCampaigns = []; // Campañas públicas (de otros estudiantes)
-let myCampaigns = [];     // Campañas propias del usuario
-
-// Se espera que Firebase ya esté inicializado en el HTML
+// Inicialización de Firestore y Storage
 const db = firebase.firestore();
 const storageRef = firebase.storage().ref();
 
-// --------------------------------------------
-// Manejo de Sesión: onAuthStateChanged
-// --------------------------------------------
-firebase.auth().onAuthStateChanged((user) => {
+/* ================================
+   ELEMENTOS DEL DOM
+   ================================ */
+
+const sections = {
+  login: document.getElementById('login'),
+  register: document.getElementById('register'),
+  landing: document.getElementById('landing'),
+  about: document.getElementById('about'),
+  projects: document.getElementById('projects'),
+  contact: document.getElementById('contact'),
+  panel: document.getElementById('panel')
+};
+
+const authButtons = document.getElementById('authButtons');
+const userBox = document.getElementById('userBox');
+const userNameLabel = document.getElementById('userNameLabel');
+const userEmailLabel = document.getElementById('userEmailLabel');
+const userDropdown = document.getElementById('userDropdown');
+const logoutBtn = document.getElementById('logoutBtn');
+
+const form = document.getElementById('uploadForm');
+const cancelEditBtn = document.getElementById('cancelEditBtn');
+const campaignList = document.getElementById('campaignList');
+
+let currentUser = null;
+let editingId = null;
+
+// Variable global para almacenar la lista de proyectos públicos (útil para el modal)
+let publicProjects = [];
+
+/* ================================
+   AUTENTICACIÓN CON FIREBASE
+   ================================ */
+
+// Se controla la sesión mediante onAuthStateChanged. Así se actualizará la UI automáticamente.
+firebase.auth().onAuthStateChanged(user => {
   if (user) {
-    const uid = user.uid;
-    db.collection("users").doc(uid)
-      .get()
-      .then((doc) => {
-        let userData = {};
-        if (doc.exists) {
-          userData = doc.data();
-        }
-        // Si el usuario (por ejemplo, Google) no tiene rol definido, mostrar modal
-        if (!userData.role) {
-          showRoleSelectionModal();
-        }
-        currentUser = {
-          uid: uid,
-          email: user.email,
-          username: user.displayName || user.email,
-          role: userData.role || null
-        };
-        updateUIForLoggedInUser();
-      })
-      .catch((err) => {
-        console.error("Error al obtener datos del usuario:", err);
-      });
+    // Se ha iniciado sesión
+    currentUser = {
+      email: user.email,
+      username: user.displayName || user.email,
+      uid: user.uid
+    };
+    showUserBox(currentUser);
   } else {
     currentUser = null;
-    hideUserUI();
-    toggleSection("landing");
+    toggleSection('landing');
   }
 });
 
-// --------------------------------------------
-// Funciones para actualizar la UI según el estado
-// --------------------------------------------
-function updateUIForLoggedInUser() {
-  document.getElementById("userNameLabel").textContent = currentUser.username;
-  document.getElementById("userEmailLabel").textContent = currentUser.email;
-  document.getElementById("authButtons").classList.add("hidden");
-  document.getElementById("userBox").classList.remove("hidden");
-  
-  // Si el usuario es Estudiante, se muestra el botón "Crear campaña" y el panel correspondiente
-  if (currentUser.role === "estudiante") {
-    document.getElementById("createCampaignBtn").classList.remove("hidden");
-    toggleSection("student-panel");
-    loadMyCampaigns();
-    showCampaignForm(); // Muestra el formulario extendido de campaña
-  } else {
-    // Para otros roles, se redirige a otra sección, por ejemplo, a "projects"
-    toggleSection("projects");
-  }
+function showUserBox(user) {
+  userNameLabel.textContent = user.username;
+  userEmailLabel.textContent = user.email;
+  authButtons.classList.add('hidden');
+  userBox.classList.remove('hidden');
+  toggleSection('panel');
+  loadUserProjects();
 }
 
-function hideUserUI() {
-  document.getElementById("authButtons").classList.remove("hidden");
-  document.getElementById("userBox").classList.add("hidden");
-}
-
-// --------------------------------------------
-// Modal de Selección de Rol
-// --------------------------------------------
-function showRoleSelectionModal() {
-  document.getElementById("roleSelectionModal").classList.remove("hidden");
-}
-function hideRoleSelectionModal() {
-  document.getElementById("roleSelectionModal").classList.add("hidden");
-}
-
-document.getElementById("selectEstudianteBtn")?.addEventListener("click", () => {
-  assignRoleToUser("estudiante");
-});
-document.getElementById("selectPatrocinadorBtn")?.addEventListener("click", () => {
-  assignRoleToUser("patrocinador");
-});
-
-function assignRoleToUser(role) {
-  if (!currentUser) return;
-  db.collection("users").doc(currentUser.uid).set({ role: role }, { merge: true })
-    .then(() => {
-      currentUser.role = role;
-      hideRoleSelectionModal();
-      updateUIForLoggedInUser();
-    })
-    .catch((err) => {
-      console.error("Error al asignar el rol:", err);
-      alert("No se pudo asignar el rol, intente de nuevo.");
-    });
-}
-
-// --------------------------------------------
-// Navegación entre secciones
-// --------------------------------------------
-function toggleSection(sectionId) {
-  const sections = document.querySelectorAll("main > section");
-  sections.forEach((sec) => {
-    if (sec.id === sectionId) {
-      sec.classList.remove("hidden");
-    } else {
-      sec.classList.add("hidden");
-    }
+function logout() {
+  firebase.auth().signOut().then(() => {
+    currentUser = null;
+    userBox.classList.add('hidden');
+    authButtons.classList.remove('hidden');
+    toggleSection('landing');
+  }).catch(err => {
+    console.error("Error al cerrar sesión: ", err);
+    alert("Error al cerrar sesión.");
   });
 }
 
-// --------------------------------------------
-// Asignación de eventos tras cargar el DOM
-// --------------------------------------------
-window.addEventListener("DOMContentLoaded", () => {
-  // Inicio de sesión
-  document.getElementById("loginForm")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const email = e.target.username.value.trim();
-    const password = e.target.password.value;
-    try {
-      await firebase.auth().signInWithEmailAndPassword(email, password);
-      // onAuthStateChanged actualizará la UI
-    } catch (err) {
-      console.error(err);
-      alert(err.message);
-    }
-  });
+/* ================================
+   NAVEGACIÓN ENTRE SECCIONES
+   ================================ */
 
-  // Registro
-  document.getElementById("registerForm")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const username = e.target.username.value.trim();
-    const email = e.target.email.value.trim();
-    const password = e.target.password.value;
-    const role = e.target.role?.value; // Se asigna en el formulario de registro
-    if (!username || !email || !password) {
-      alert("Todos los campos son obligatorios");
-      return;
-    }
-    try {
-      const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
-      await userCredential.user.updateProfile({ displayName: username });
-      await db.collection("users").doc(userCredential.user.uid).set({
-        username,
-        email,
-        role,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      alert("Registro exitoso");
-      toggleSection("login");
-    } catch (err) {
-      console.error(err);
-      alert(err.message);
-    }
-  });
-
-  // Inicio de sesión con Google
-  document.getElementById("googleBtn")?.addEventListener("click", async () => {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    try {
-      await firebase.auth().signInWithPopup(provider);
-      // onAuthStateChanged se encargará de actualizar la UI; si no hay rol, aparece el modal.
-    } catch (err) {
-      console.error("Error con Google:", err);
-      alert("Fallo el inicio de sesión con Google");
-    }
-  });
-
-  // Logout
-  document.getElementById("logoutBtn")?.addEventListener("click", () => {
-    firebase.auth().signOut().catch((err) => {
-      console.error("Error al cerrar sesión:", err);
-      alert("Error al cerrar sesión");
-    });
-  });
-
-  // Menú de usuario
-  document.getElementById("userMenuBtn")?.addEventListener("click", () => {
-    document.getElementById("userDropdown").classList.toggle("hidden");
-  });
-
-  // Navegación: botones con atributo data-section
-  document.querySelectorAll("[data-section]")?.forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      const secId = e.currentTarget.getAttribute("data-section");
-      if (secId) toggleSection(secId);
-    });
+document.querySelectorAll('[data-section]')?.forEach(el => {
+  el.addEventListener('click', e => {
+    const secId = e.currentTarget.getAttribute('data-section');
+    if (secId) toggleSection(secId);
   });
 });
 
-// --------------------------------------------
-// Campaña: Mostrar formulario extendido
-// --------------------------------------------
-function showCampaignForm() {
-  const formContainer = document.getElementById("campaign-form-container");
-  formContainer.classList.remove("hidden");
-  // Nota: Si usabas un botón de "pagar suscripción", aquí se omite para mostrar el formulario de inmediato.
-}
+document.getElementById('brandBtn')?.addEventListener('click', () => {
+  toggleSection('landing');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
 
-// Manejo del formulario para crear/editar campaña
-document.getElementById("campaign-form")?.addEventListener("submit", async (e) => {
+/* ================================
+   LOGIN Y REGISTRO CON Firebase Auth
+   ================================ */
+
+// Inicio de sesión con email/contraseña
+document.getElementById('loginForm')?.addEventListener('submit', async e => {
   e.preventDefault();
-  if (!currentUser) return;
-  // Recoger datos extendidos del formulario
-  const title = document.getElementById("campaign-title").value.trim();
-  const description = document.getElementById("campaign-description").value.trim();
-  const goal = document.getElementById("campaign-goal").value.trim();
-  const image = document.getElementById("campaign-image").value.trim();
-  const video = document.getElementById("campaign-video").value.trim();
-  const sector = document.getElementById("campaign-sector").value.trim();
-  const anio = document.getElementById("campaign-anio").value.trim();
-  const website = document.getElementById("campaign-web").value.trim();
-  
-  if (!title || !description || !goal || !image || !sector || !anio) {
-    alert("Complete todos los campos obligatorios");
+  const email = e.target.username.value.trim();
+  const password = e.target.password.value;
+  try {
+    await firebase.auth().signInWithEmailAndPassword(email, password);
+    // onAuthStateChanged actualizará la UI
+  } catch (err) {
+    console.error(err);
+    alert(err.message);
+  }
+});
+
+// Registro de usuario con email/contraseña
+document.getElementById('registerForm')?.addEventListener('submit', async e => {
+  e.preventDefault();
+  const username = e.target.username.value.trim();
+  const email = e.target.email.value.trim();
+  const password = e.target.password.value;
+  const role = e.target.role?.value || 'estudiante';
+
+  if (!username || !email || !password) {
+    alert('Todos los campos son obligatorios');
     return;
   }
-  
-  const campaignData = {
-    title,
-    description,
-    goal: parseFloat(goal),
-    image,
-    video,
-    sector,
-    anio: parseInt(anio),
-    website,
-    user: currentUser.email,
-    isPublic: false, // Se guarda inicialmente como privada
-    views: 0,
-    contributions: Math.floor(Math.random() * 20),
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-  };
-  
+
   try {
-    const formEl = document.getElementById("campaign-form");
-    if (formEl.getAttribute("data-editing-id")) {
-      // Actualizar campaña existente
-      const campaignId = formEl.getAttribute("data-editing-id");
-      await db.collection("projects").doc(campaignId).update(campaignData);
-      alert("Campaña actualizada correctamente");
-      formEl.removeAttribute("data-editing-id");
-    } else {
-      // Crear nueva campaña
-      await db.collection("projects").add(campaignData);
-      alert("Campaña creada (privada) correctamente");
-    }
-    formEl.reset();
-    loadMyCampaigns();
+    const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+    // Actualizar el perfil del usuario con el nombre
+    await userCredential.user.updateProfile({
+      displayName: username
+    });
+    // Opcional: guardar información adicional en Firestore
+    await db.collection('users').doc(userCredential.user.uid).set({
+      username,
+      email,
+      role,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    alert('Registro exitoso');
+    toggleSection('login');
   } catch (err) {
     console.error(err);
-    alert("Error al guardar la campaña");
+    alert(err.message);
   }
 });
 
-// --------------------------------------------
-// Carga y renderizado de campañas
-// --------------------------------------------
-// Campañas públicas (de otros estudiantes con isPublic === true)
-async function loadPublicCampaigns() {
+// Inicio de sesión con Google
+document.getElementById('googleBtn')?.addEventListener('click', async () => {
+  const provider = new firebase.auth.GoogleAuthProvider();
   try {
-    const snapshot = await db.collection("projects")
-      .where("isPublic", "==", true)
-      .get();
-    publicCampaigns = [];
-    const container = document.getElementById("public-campaigns");
-    container.innerHTML = "";
-    snapshot.forEach((doc) => {
-      const campaign = { id: doc.id, ...doc.data() };
-      publicCampaigns.push(campaign);
-      container.appendChild(renderCampaignCard(campaign));
-    });
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-// Campañas propias del usuario
-async function loadMyCampaigns() {
-  if (!currentUser) return;
-  try {
-    const snapshot = await db.collection("projects")
-      .where("user", "==", currentUser.email)
-      .get();
-    myCampaigns = [];
-    const container = document.getElementById("my-campaigns");
-    container.innerHTML = "";
-    snapshot.forEach((doc) => {
-      const campaign = { id: doc.id, ...doc.data() };
-      myCampaigns.push(campaign);
-      container.appendChild(renderCampaignCard(campaign, true));
-    });
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-// Función para renderizar una tarjeta de campaña (datos extendidos incluidos)
-function renderCampaignCard(campaign, isMine = false) {
-  const card = document.createElement("div");
-  card.className = "border p-4 rounded shadow bg-gray-50";
-  card.innerHTML = `
-    <h4 class="text-xl font-semibold text-blue-700 mb-1">${campaign.title}</h4>
-    <p class="text-gray-700 text-sm mb-2">${campaign.description}</p>
-    <p class="text-sm text-green-700 font-medium">Meta: $${campaign.goal}</p>
-    <p class="text-sm text-gray-600">Sector: ${campaign.sector}</p>
-    <p class="text-sm text-gray-600">Año de inicio: ${campaign.anio}</p>
-    ${campaign.website ? `<p class="text-sm text-blue-600"><a href="${campaign.website}" target="_blank">Sitio Web</a></p>` : ""}
-    ${campaign.video ? `<p class="text-sm text-blue-600 mt-2"><a href="${campaign.video}" target="_blank">🎥 Ver video</a></p>` : ""}
-    ${campaign.image ? `<img src="${campaign.image}" alt="imagen" class="w-full h-40 object-cover mt-2 rounded" />` : ""}
-    <div class="text-xs text-gray-500 mt-2">👁️ ${campaign.views || 0} visitas | 🤝 ${campaign.contributions || 0} aportes</div>
-    ${ isMine ? `
-      <div class="flex gap-2 mt-3">
-        <button class="bg-yellow-500 text-white px-3 py-1 rounded text-sm" onclick="editCampaign('${campaign.id}')">Editar</button>
-        <button class="bg-red-600 text-white px-3 py-1 rounded text-sm" onclick="deleteCampaign('${campaign.id}')">Eliminar</button>
-      </div>
-    ` : "" }
-  `;
-  return card;
-}
-
-// Permite editar una campaña propia
-async function editCampaign(id) {
-  try {
-    const doc = await db.collection("projects").doc(id).get();
-    const campaign = { id: doc.id, ...doc.data() };
-    if (campaign.user !== currentUser.email) return;
-    document.getElementById("campaign-title").value = campaign.title;
-    document.getElementById("campaign-description").value = campaign.description;
-    document.getElementById("campaign-goal").value = campaign.goal;
-    document.getElementById("campaign-image").value = campaign.image;
-    document.getElementById("campaign-video").value = campaign.video || "";
-    document.getElementById("campaign-sector").value = campaign.sector;
-    document.getElementById("campaign-anio").value = campaign.anio;
-    document.getElementById("campaign-web").value = campaign.website || "";
-    document.getElementById("campaign-form").setAttribute("data-editing-id", id);
-    showCampaignForm();
-  } catch (err) {
-    console.error(err);
-    alert("Error al cargar la campaña para edición");
-  }
-}
-
-// Permite eliminar una campaña propia
-async function deleteCampaign(id) {
-  if (confirm("¿Estás seguro de eliminar esta campaña?")) {
-    try {
-      await db.collection("projects").doc(id).delete();
-      alert("Campaña eliminada");
-      loadMyCampaigns();
-    } catch (err) {
-      console.error(err);
-      alert("Error al eliminar la campaña");
+    const result = await firebase.auth().signInWithPopup(provider);
+    // Si el usuario se logea por primera vez, guardarlo en Firestore
+    const user = result.user;
+    const userDoc = await db.collection('users').doc(user.uid).get();
+    if (!userDoc.exists) {
+      await db.collection('users').doc(user.uid).set({
+        username: user.displayName,
+        email: user.email,
+        role: 'estudiante',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
     }
+    // La sesión se actualizará vía onAuthStateChanged
+  } catch (err) {
+    console.error("Error con Google:", err);
+    alert('Fallo el inicio de sesión con Google');
   }
-}
-
-// --------------------------------------------
-// Configuración de Perfil
-// --------------------------------------------
-document.getElementById("profileConfigBtn")?.addEventListener("click", () => {
-  toggleSection("profile-config");
-  loadProfileData();
 });
 
-function loadProfileData() {
-  if (!currentUser) return;
-  db.collection("users").doc(currentUser.uid)
-    .get()
-    .then((doc) => {
-      if (doc.exists) {
-        const data = doc.data();
-        document.getElementById("profile-nombres").value = data.nombres || "";
-        document.getElementById("profile-apellidos").value = data.apellidos || "";
-        document.getElementById("profile-fecha-nac").value = data.fechaNacimiento || "";
-        document.getElementById("profile-institucion").value = data.institucion || "";
-        document.getElementById("profile-metodos-pago").value = data.metodosPago || "";
-      }
-    })
-    .catch((err) => console.error(err));
-}
+/* ================================
+   GESTIÓN DE PROYECTOS (CAMPAÑAS) CON Firestore
+   ================================ */
 
-document.getElementById("profile-form")?.addEventListener("submit", (e) => {
+// El formulario para crear/editar proyectos. Se espera que los inputs para imagen y video sean de tipo "file".
+form?.addEventListener('submit', async e => {
   e.preventDefault();
   if (!currentUser) return;
-  const updatedData = {
-    nombres: e.target.nombres.value.trim(),
-    apellidos: e.target.apellidos.value.trim(),
-    fechaNacimiento: e.target.fechaNacimiento.value,
-    institucion: e.target.institucion.value.trim(),
-    metodosPago: e.target.metodosPago.value.trim()
-  };
-  db.collection("users").doc(currentUser.uid)
-    .set(updatedData, { merge: true })
-    .then(() => {
-      alert("Perfil actualizado");
-      toggleSection("student-panel");
-    })
-    .catch((err) => {
-      console.error(err);
-      alert("Error al actualizar el perfil");
-    });
+
+  const projectName = form.projectName.value.trim();
+  const description = form.description.value.trim();
+  const goal = form.goal.value.trim();
+  const videoFile = form.video?.files ? form.video.files[0] : null;
+  const imageFile = form.image?.files ? form.image.files[0] : null;
+
+  if (!projectName || !description || !goal || (!imageFile && !form.image.value.trim())) {
+    alert('Por favor completa todos los campos requeridos (incluyendo imagen).');
+    return;
+  }
+
+  try {
+    // Subida de archivo(s) a Firebase Storage
+    let imageUrl = '';
+    let videoUrl = '';
+    if (imageFile) {
+      const imageRef = storageRef.child(`images/${currentUser.uid}/${Date.now()}_${imageFile.name}`);
+      await imageRef.put(imageFile);
+      imageUrl = await imageRef.getDownloadURL();
+    } else if (form.image.value.trim()) {
+      imageUrl = form.image.value.trim();
+    }
+    if (videoFile) {
+      const videoRef = storageRef.child(`videos/${currentUser.uid}/${Date.now()}_${videoFile.name}`);
+      await videoRef.put(videoFile);
+      videoUrl = await videoRef.getDownloadURL();
+    } else if (form.video.value.trim()) {
+      videoUrl = form.video.value.trim();
+    }
+
+    // Construir objeto proyecto
+    const projectData = {
+      user: currentUser.email,
+      projectName,
+      description,
+      goal: parseFloat(goal),
+      image: imageUrl,
+      video: videoUrl,
+      // Valores fijos para proyectos nuevos
+      views: editingId ? undefined : 0,
+      contributions: editingId ? undefined : Math.floor(Math.random() * 20),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdAt: editingId ? undefined : firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (editingId) {
+      // Actualización de proyecto existente
+      await db.collection('projects').doc(editingId).update(projectData);
+      alert('Proyecto actualizado correctamente');
+      editingId = null;
+      cancelEditBtn.classList.add('hidden');
+    } else {
+      // Creación de nuevo proyecto
+      await db.collection('projects').add(projectData);
+      alert('Proyecto guardado correctamente');
+    }
+    form.reset();
+    loadUserProjects();
+  } catch (err) {
+    console.error(err);
+    alert('Error al guardar el proyecto');
+  }
 });
 
-// --------------------------------------------
-// Inicialización: Carga inicial
-// --------------------------------------------
-window.addEventListener("DOMContentLoaded", () => {
-  // Cargar campañas públicas de otros
+cancelEditBtn?.addEventListener('click', () => {
+  form.reset();
+  editingId = null;
+  cancelEditBtn.classList.add('hidden');
+});
+
+// Cargar proyectos del usuario (desde Firestore)
+async function loadUserProjects() {
+  if (!currentUser) return;
+  try {
+    const snapshot = await db.collection('projects')
+                             .where('user', '==', currentUser.email)
+                             .get();
+    campaignList.innerHTML = '';
+    snapshot.forEach(doc => {
+      const project = { id: doc.id, ...doc.data() };
+      renderProjectCard(project);
+    });
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+// Renderizar cada tarjeta de proyecto en el panel del usuario
+function renderProjectCard(project) {
+  const card = document.createElement('div');
+  card.className = 'border p-4 rounded shadow bg-gray-50 relative';
+  const imagePath = project.image || '';
+
+  card.innerHTML = `
+    <h4 class="text-xl font-semibold text-blue-700 mb-1">${project.projectName}</h4>
+    <p class="text-gray-700 text-sm mb-2">${project.description}</p>
+    <p class="text-sm text-green-700 font-medium">Meta: $${project.goal}</p>
+    ${project.video ? `<p class="text-sm text-blue-600 mt-2"><a href="${project.video}" target="_blank">🎥 Ver video</a></p>` : ''}
+    ${project.image ? `<img src="${imagePath}" alt="imagen" class="w-full h-40 object-cover mt-2 rounded" />` : ''}
+    <div class="text-xs text-gray-500 mt-2">👁️ ${project.views || 0} visitas | 🤝 ${project.contributions || 0} aportes</div>
+    <div class="flex gap-2 mt-3">
+      <button class="bg-yellow-500 text-white px-3 py-1 rounded text-sm" data-action="edit" data-id="${project.id}">Editar</button>
+      <button class="bg-red-600 text-white px-3 py-1 rounded text-sm" data-action="delete" data-id="${project.id}">Eliminar</button>
+    </div>
+  `;
+  card.querySelector('[data-action="edit"]').addEventListener('click', () => editProject(project.id));
+  card.querySelector('[data-action="delete"]').addEventListener('click', () => deleteProject(project.id));
+  campaignList.appendChild(card);
+}
+
+// Función para editar un proyecto
+async function editProject(id) {
+  try {
+    const doc = await db.collection('projects').doc(id).get();
+    const project = { id: doc.id, ...doc.data() };
+    if (!project || project.user !== currentUser.email) return;
+    form.projectName.value = project.projectName;
+    form.description.value = project.description;
+    form.goal.value = project.goal;
+    form.video.value = project.video || '';
+    form.image.value = project.image || '';
+    editingId = id;
+    cancelEditBtn.classList.remove('hidden');
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+// Función para eliminar un proyecto
+async function deleteProject(id) {
+  const confirmDelete = confirm('¿Estás seguro de eliminar este proyecto?');
+  if (!confirmDelete) return;
+  try {
+    await db.collection('projects').doc(id).delete();
+    alert('Proyecto eliminado');
+    loadUserProjects();
+  } catch (err) {
+    console.error(err);
+    alert('Error al eliminar el proyecto');
+  }
+}
+
+/* ================================
+   PROYECTOS PÚBLICOS Y MODAL DE POSTULACIÓN
+   ================================ */
+
+// Cargar todas las campañas públicas (todos los proyectos)
+async function loadPublicCampaigns() {
+  try {
+    const snapshot = await db.collection('projects').get();
+    publicProjects = [];
+    const publicList = document.getElementById('publicList');
+    publicList.innerHTML = '';
+    snapshot.forEach(doc => {
+      const project = { id: doc.id, ...doc.data() };
+      publicProjects.push(project);
+      renderPublicProject(project);
+    });
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+// Renderizar cada proyecto en la sección pública
+function renderPublicProject(c) {
+  const div = document.createElement('div');
+  div.className = 'border rounded p-4 shadow';
+  const imagePath = c.image || '';
+  div.innerHTML = `
+    <img src="${imagePath}" alt="Imagen del proyecto" class="w-full h-40 object-cover rounded" />
+    <h3 class="font-bold text-lg mt-2">${c.projectName}</h3>
+    <p class="text-gray-700">${c.description.slice(0, 100)}...</p>
+    <button data-action="openModal" data-id="${c.id}" class="text-blue-600 underline mt-2">Ver más</button>
+  `;
+  div.querySelector('[data-action="openModal"]').addEventListener('click', () => openProjectModal(c.id));
+  document.getElementById('publicList').appendChild(div);
+}
+
+// Abrir el modal para postulación a un proyecto
+function openProjectModal(id) {
+  const project = publicProjects.find(x => x.id === id);
+  if (!project) {
+    alert('Proyecto no encontrado');
+    return;
+  }
+  document.getElementById('applyBtn').onclick = () => applyToProject(id);
+  document.getElementById('projectModal').classList.remove('hidden');
+}
+
+// Enviar la postulación a un proyecto
+async function applyToProject(projectId) {
+  const message = document.getElementById('applyMessage').value;
+  if (!currentUser) {
+    alert('Debes iniciar sesión para postularte');
+    return;
+  }
+  try {
+    await db.collection('applications').add({
+      projectId,
+      investorEmail: currentUser.email,
+      message,
+      date: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    alert('Tu postulación fue enviada');
+    document.getElementById('applyMessage').value = '';
+    document.getElementById('projectModal').classList.add('hidden');
+  } catch (err) {
+    console.error(err);
+    alert('Error al enviar la postulación');
+  }
+}
+
+/* ================================
+   GESTIÓN DE SECCIONES Y BOTONES DE AUTENTICACIÓN
+   ================================ */
+
+function toggleSection(sectionId) {
+  Object.entries(sections).forEach(([key, section]) => {
+    if (section) {
+      if (key === sectionId) {
+        // Si se intenta acceder al panel sin estar logueado, redirige a login
+        if (key === 'panel' && !currentUser) {
+          toggleSection('login');
+        } else {
+          section.classList.remove('hidden');
+        }
+      } else {
+        section.classList.add('hidden');
+      }
+    }
+  });
+}
+
+function setupAuthButtons() {
+  const loginBtn = document.getElementById('loginBtn');
+  const registerBtn = document.getElementById('registerBtn');
+
+  if (loginBtn) {
+    loginBtn.addEventListener('click', () => toggleSection('login'));
+  }
+
+  if (registerBtn) {
+    registerBtn.addEventListener('click', () => toggleSection('register'));
+  }
+
+  const userMenuBtn = document.getElementById('userMenuBtn');
+  if (userMenuBtn) {
+    userMenuBtn.addEventListener('click', () => {
+      userDropdown.classList.toggle('hidden');
+    });
+  }
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', logout);
+  }
+}
+
+/* ================================
+   INICIO DE LA APLICACIÓN
+   ================================ */
+
+window.addEventListener('DOMContentLoaded', () => {
+  setupAuthButtons();
   loadPublicCampaigns();
 });
