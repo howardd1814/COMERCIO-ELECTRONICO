@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Platformstudentctg - Panel de Usuario</title>
 
+    <link rel="stylesheet" href="styles.css" />
     <!-- Preconnect para Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -103,6 +104,19 @@
         </button>
       </div>
     </header>
+    <!-- MODAL: Detalle de Campaña Pública -->
+      <div id="detalleModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white max-w-xl w-full rounded-lg p-6 shadow-xl relative">
+          <!-- Botón para cerrar -->
+          <button id="cerrarDetalleBtn" class="absolute top-2 right-2 text-gray-500 hover:text-red-600 text-xl font-bold">
+            &times;
+          </button>
+          <!-- Contenido del detalle -->
+          <div id="detalleContenido" class="space-y-4">
+            <!-- Aquí se renderiza dinámicamente con JS -->
+          </div>
+        </div>
+      </div>
 
     <!-- CONTENIDO PRINCIPAL -->
     <main class="py-8 px-4">
@@ -198,9 +212,6 @@
           <p class="text-center text-gray-500">Aún no hay campañas disponibles.</p>
         </div>
         <!-- Botón "Crear Campaña" en el muro (visible solo si el usuario está autenticado) -->
-        <button id="createCampaignBtn" class="hidden mt-6 bg-green-600 text-white px-6 py-3 rounded hover:bg-green-700">
-          Crear Campaña
-        </button>
       </section>
 
       <!-- Sección de Login (al activarse se ocultan las secciones de campañas) -->
@@ -351,6 +362,11 @@
       };
       firebase.initializeApp(firebaseConfig);
     </script>
-    <script src="app.js" defer></script>
+    <script type="module" src="app.js"></script>
+    <!-- Modal para Completar Información -->
+<div id="extraDataModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <!-- El contenido se inyectará dinámicamente -->
+</div>
+
   </body>
 </html>
