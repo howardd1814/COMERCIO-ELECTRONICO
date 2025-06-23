@@ -1,5 +1,6 @@
 /* ================================
-   app.js - Versión actualizada para el prototipo con campaña
+   app.js - Versión actualizada con perfil de usuario
+   y funcionalidad para crear campañas
    ================================ */
 
 // Inicialización de Firebase (Firestore, Storage, Auth)
@@ -10,6 +11,7 @@ const storageRef = firebase.storage().ref();
    ELEMENTOS DEL DOM, SECCIONES Y VARIABLES GLOBALES
    ================================ */
 
+// Secciones generales de la UI
 const sections = {
   landing: document.getElementById('landing'),
   about: document.getElementById('about'),
@@ -20,6 +22,7 @@ const sections = {
   register: document.getElementById('register')
 };
 
+// Elementos de la cabecera y autenticación
 const authButtons = document.getElementById('authButtons');
 const userBox = document.getElementById('userBox');
 const userNameLabel = document.getElementById('userNameLabel');
@@ -27,16 +30,31 @@ const userEmailLabel = document.getElementById('userEmailLabel');
 const userDropdown = document.getElementById('userDropdown');
 const logoutBtn = document.getElementById('logoutBtn');
 
-const newCampaignForm = document.getElementById('newCampaignForm');
-const campaignList = document.getElementById('campaignList');
-const publicList = document.getElementById('publicList');
+// Formularios y listados de campañas
+const newCampaignForm = document.getElementById('newCampaignForm'); // Formulario para crear/editar campaña
+const campaignList = document.getElementById('campaignList');         // Lista de campañas del usuario (dashboard)
+const publicList = document.getElementById('publicList');             // Lista de campañas públicas
 
+// Modales para datos extra y postulación
 const extraDataModal = document.getElementById('extraDataModal');
 const extraDataForm = document.getElementById('extraDataForm');
-
 const projectModal = document.getElementById('projectModal');
 const applyMessage = document.getElementById('applyMessage');
 const cancelModalBtn = document.getElementById('cancelModalBtn');
+
+// Elementos adicionales:
+// • Botón "Campañas" en la navegación (visible solo si el usuario está logueado)
+const navCampaignsBtn = document.getElementById("btnCampaigns");
+// • Botón "Crear Campaña" en el muro (visible solo si el usuario está logueado)
+const publicCreateBtn = document.getElementById("createCampaignBtn");
+// • Botón "Crear Campaña" en el panel de campañas (para desplegar el formulario)
+const panelCreateBtn = document.getElementById("panelCreateBtn");
+
+// Modal y formulario para editar perfil
+const profileModal = document.getElementById("profileModal");
+const profileForm = document.getElementById("profileForm");
+const cancelProfileBtn = document.getElementById("cancelProfileBtn");
+const editProfileBtn = document.getElementById("editProfileBtn");
 
 let currentUser = null;
 let editingCampaignId = null;
@@ -44,12 +62,22 @@ let editingCampaignId = null;
 let publicCampaigns = [];
 
 /* ================================
-   AUTENTICACIÓN CON FIREBASE Y RECOLECCIÓN DE DATOS EXTRA
+   FUNCIONES DE UTILIDAD: Mostrar/Ocultar Elementos
    ================================ */
+function showElement(element) {
+  if (element) element.classList.remove("hidden");
+}
 
+function hideElement(element) {
+  if (element) element.classList.add("hidden");
+}
+
+/* ================================
+   GESTIÓN DE AUTENTICACIÓN
+   ================================ */
 firebase.auth().onAuthStateChanged(async user => {
   if (user) {
-    // Construimos el objeto currentUser y mostramos la UI correspondiente
+    // Construir el objeto currentUser y actualizar la UI
     currentUser = {
       email: user.email,
       username: user.displayName || user.email,
@@ -57,40 +85,48 @@ firebase.auth().onAuthStateChanged(async user => {
     };
     showUserBox(currentUser);
     
-    // Verificamos si ya se ha guardado la información extendida
+    // Verificar si ya se ha guardado la información extendida (fecha de nacimiento, tipo de usuario)
     const profileKey = `userProfile_${currentUser.uid}`;
     let extraData = localStorage.getItem(profileKey);
     if (!extraData) {
-      // Si no existe, mostramos el modal para solicitar fecha de nacimiento y tipo de usuario
       showExtraDataModal();
     } else {
       currentUser.profile = JSON.parse(extraData);
     }
+
+    // Mostrar elementos solo para usuarios autenticados
+    showElement(navCampaignsBtn);
+    showElement(publicCreateBtn);
   } else {
     currentUser = null;
+    hideElement(navCampaignsBtn);
+    hideElement(publicCreateBtn);
+    hideElement(newCampaignForm);
     toggleSection('landing');
   }
 });
 
-/* Mostrar la información del usuario en la cabecera y cargar las campañas propias */
+/* Actualizar UI al iniciar sesión: muestra el nombre completo y carga campañas propias */
 function showUserBox(user) {
+  // Se muestra el nombre completo obtenido de displayName
   userNameLabel.textContent = user.username;
+  // Actualizamos también el correo en el menú desplegable
   userEmailLabel.textContent = user.email;
-  authButtons.classList.add('hidden');
-  userBox.classList.remove('hidden');
+  hideElement(authButtons);
+  showElement(userBox);
   toggleSection('panel');
   loadUserCampaigns();
 }
 
-/* Cerrar sesión */
+/* Función para cerrar sesión */
 function logout() {
   firebase
     .auth()
     .signOut()
     .then(() => {
       currentUser = null;
-      userBox.classList.add('hidden');
-      authButtons.classList.remove('hidden');
+      hideElement(userBox);
+      showElement(authButtons);
       toggleSection('landing');
     })
     .catch(err => {
@@ -102,7 +138,6 @@ function logout() {
 /* ================================
    NAVEGACIÓN ENTRE SECCIONES
    ================================ */
-
 function toggleSection(sectionId) {
   Object.entries(sections).forEach(([key, section]) => {
     if (section) {
@@ -120,7 +155,7 @@ function toggleSection(sectionId) {
   });
 }
 
-/* Configurar botones de navegación y autenticación */
+/* Configurar botones de navegación y de autenticación */
 function setupAuthButtons() {
   const loginBtn = document.getElementById("loginBtn");
   const registerBtn = document.getElementById("registerBtn");
@@ -149,14 +184,14 @@ document.querySelectorAll("[data-section]").forEach(el => {
   });
 });
 
-/* Botón del logo/redirección a inicio */
+/* Botón de logo: redirección a landing */
 document.querySelector('[data-section="landing"]')?.addEventListener("click", () => {
   toggleSection("landing");
   window.scrollTo({ top: 0, behavior: "smooth" });
 });
 
 /* ================================
-   LOGIN Y REGISTRO CON EMAIL/CONTRASEÑA y Google
+   LOGIN Y REGISTRO (Email/Contraseña y Google)
    ================================ */
 
 // Inicio de sesión con email/contraseña
@@ -166,32 +201,26 @@ document.getElementById("loginForm")?.addEventListener("submit", async e => {
   const password = e.target.password.value;
   try {
     await firebase.auth().signInWithEmailAndPassword(email, password);
-    // onAuthStateChanged actualizará la UI
   } catch (err) {
     console.error(err);
     alert(err.message);
   }
 });
 
-// Registro de usuario con email/contraseña
+// Registro con email/contraseña
 document.getElementById("registerForm")?.addEventListener("submit", async e => {
   e.preventDefault();
   const username = e.target.username.value.trim();
   const email = e.target.email.value.trim();
   const password = e.target.password.value;
   const role = e.target.role?.value || "estudiante";
-
   if (!username || !email || !password) {
     alert("Todos los campos son obligatorios");
     return;
   }
-
   try {
-    const userCredential = await firebase
-      .auth()
-      .createUserWithEmailAndPassword(email, password);
+    const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
     await userCredential.user.updateProfile({ displayName: username });
-    // Guardamos información mínima en Firestore
     await db.collection("users").doc(userCredential.user.uid).set({
       username,
       email,
@@ -221,7 +250,6 @@ document.getElementById("googleBtn")?.addEventListener("click", async () => {
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
     }
-    // onAuthStateChanged actualizará la UI y pedirá datos extra si es necesario
   } catch (err) {
     console.error("Error con Google:", err);
     alert("Error en inicio de sesión con Google");
@@ -231,25 +259,17 @@ document.getElementById("googleBtn")?.addEventListener("click", async () => {
 /* ================================
    FORMULARIO DE DATOS EXTRA TRAS LOGIN CON GOOGLE
    ================================ */
-
 function showExtraDataModal() {
   extraDataModal.classList.remove("hidden");
 }
-
 function hideExtraDataModal() {
   extraDataModal.classList.add("hidden");
 }
-
 extraDataForm?.addEventListener("submit", e => {
   e.preventDefault();
   const birthdate = e.target.birthdate.value;
   const userType = e.target.userType.value;
-  // Agregamos "subscriptionActive" en false por defecto
-  const extraData = {
-    birthdate,
-    userType,
-    subscriptionActive: false
-  };
+  const extraData = { birthdate, userType, subscriptionActive: false };
   const profileKey = `userProfile_${currentUser.uid}`;
   localStorage.setItem(profileKey, JSON.stringify(extraData));
   currentUser.profile = extraData;
@@ -260,28 +280,24 @@ extraDataForm?.addEventListener("submit", e => {
    GESTIÓN DE CAMPAÑAS (CREAR, EDITAR, ELIMINAR, PUBLICAR)
    ================================ */
 
-// Manejo del formulario para crear o editar campañas (modo privado inicial)
+// Manejo del formulario para crear o editar campañas (modo privado)
 newCampaignForm?.addEventListener("submit", async e => {
   e.preventDefault();
   if (!currentUser) return;
-
   const titulo = e.target.titulo.value.trim();
   const descripcion = e.target.descripcion.value.trim();
   const meta = e.target.meta.value.trim();
   const imagen = e.target.imagen.value.trim();
   const video = e.target.video.value.trim();
-
   if (!titulo || !descripcion || !meta || !imagen) {
     alert("Por favor completa todos los campos requeridos");
     return;
   }
-
   const metaNumber = parseFloat(meta);
   if (isNaN(metaNumber) || metaNumber <= 0) {
     alert("La meta debe ser un número positivo");
     return;
   }
-
   try {
     const campaignData = {
       creador: currentUser.email,
@@ -290,8 +306,8 @@ newCampaignForm?.addEventListener("submit", async e => {
       meta: metaNumber,
       imagen,
       video,
-      // Al crear una campaña nueva, se guarda como "privado"
-      estado: editingCampaignId ? undefined : "privado",
+      // Si es creación nueva, se guarda como "privada"
+      estado: editingCampaignId ? undefined : "privada",
       vistas: editingCampaignId ? undefined : 0,
       aportes: editingCampaignId ? undefined : 0,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -299,7 +315,6 @@ newCampaignForm?.addEventListener("submit", async e => {
         ? undefined
         : firebase.firestore.FieldValue.serverTimestamp()
     };
-
     if (editingCampaignId) {
       await db.collection("campaigns").doc(editingCampaignId).update(campaignData);
       alert("Campaña actualizada correctamente");
@@ -309,6 +324,7 @@ newCampaignForm?.addEventListener("submit", async e => {
       alert("Campaña guardada correctamente");
     }
     newCampaignForm.reset();
+    hideElement(newCampaignForm);
     loadUserCampaigns();
     loadPublicCampaigns();
   } catch (err) {
@@ -317,14 +333,13 @@ newCampaignForm?.addEventListener("submit", async e => {
   }
 });
 
-// Cargar las campañas del usuario (dashboard)
+// Cargar campañas del usuario (dashboard)
 async function loadUserCampaigns() {
   if (!currentUser) return;
   try {
-    const snapshot = await db
-      .collection("campaigns")
-      .where("creador", "==", currentUser.email)
-      .get();
+    const snapshot = await db.collection("campaigns")
+                              .where("creador", "==", currentUser.email)
+                              .get();
     campaignList.innerHTML = "";
     snapshot.forEach(doc => {
       const campaign = { id: doc.id, ...doc.data() };
@@ -335,7 +350,7 @@ async function loadUserCampaigns() {
   }
 }
 
-// Renderiza cada tarjeta de campaña en el panel del usuario
+// Renderizar cada campaña en el panel del usuario
 function renderUserCampaignCard(campaign) {
   const card = document.createElement("div");
   card.className = "border p-4 rounded shadow bg-gray-50 relative";
@@ -359,7 +374,7 @@ function renderUserCampaignCard(campaign) {
   campaignList.appendChild(card);
 }
 
-// Función para editar una campaña (cargando datos en el formulario)
+// Función para editar una campaña: carga datos en el formulario
 async function editCampaign(id) {
   try {
     const doc = await db.collection("campaigns").doc(id).get();
@@ -371,6 +386,7 @@ async function editCampaign(id) {
     newCampaignForm.imagen.value = campaign.imagen;
     newCampaignForm.video.value = campaign.video || "";
     editingCampaignId = id;
+    showElement(newCampaignForm);
   } catch (err) {
     console.error(err);
   }
@@ -392,7 +408,6 @@ async function deleteCampaign(id) {
 
 // Función para publicar una campaña (cambiar estado a "publico")
 async function publishCampaign(id) {
-  // Solo se permite publicar si el usuario cuenta con una suscripción activa
   if (!(currentUser.profile && currentUser.profile.subscriptionActive)) {
     alert("No tienes suscripción activa para publicar campañas.");
     return;
@@ -414,14 +429,12 @@ async function publishCampaign(id) {
 /* ================================
    CAMPAÑAS PÚBLICAS Y MODAL DE POSTULACIÓN
    ================================ */
-
-// Cargar las campañas públicas (donde estado es "publico")
+// Cargar campañas públicas (donde estado es "publico")
 async function loadPublicCampaigns() {
   try {
-    const snapshot = await db
-      .collection("campaigns")
-      .where("estado", "==", "publico")
-      .get();
+    const snapshot = await db.collection("campaigns")
+                             .where("estado", "==", "publico")
+                             .get();
     publicList.innerHTML = "";
     publicCampaigns = [];
     snapshot.forEach(doc => {
@@ -437,7 +450,7 @@ async function loadPublicCampaigns() {
   }
 }
 
-// Renderizar cada campaña en el muro público
+// Renderizar cada campaña pública en el muro
 function renderPublicCampaignCard(campaign) {
   const div = document.createElement("div");
   div.className = "border rounded p-4 shadow";
@@ -485,7 +498,7 @@ async function applyToCampaign(campaignId) {
   }
 }
 
-/* Cerrar el modal de postulación */
+// Cerrar el modal de postulación
 cancelModalBtn?.addEventListener("click", () => {
   projectModal.classList.add("hidden");
 });
@@ -493,16 +506,68 @@ cancelModalBtn?.addEventListener("click", () => {
 /* ================================
    EVENTOS PARA BOTONES ADICIONALES
    ================================ */
-
-// Botón para "Crear Campaña" en el muro público (redirecciona al panel)
+// Botón "Crear Campaña" en el muro público: redirige al panel
 document.getElementById("createCampaignBtn")?.addEventListener("click", () => {
   toggleSection("panel");
+});
+
+// Botón "Crear Campaña" en el panel: muestra/oculta el formulario de campaña
+document.getElementById("panelCreateBtn")?.addEventListener("click", () => {
+  if (newCampaignForm.classList.contains("hidden")) {
+    showElement(newCampaignForm);
+  } else {
+    hideElement(newCampaignForm);
+  }
+});
+
+/* ================================
+   EDITAR PERFIL DE USUARIO
+   ================================ */
+// Al hacer clic en "Editar Perfil" del menú del usuario, se abre el modal de perfil
+editProfileBtn?.addEventListener("click", () => {
+  // Rellenar los campos del formulario con la información actual del usuario
+  document.getElementById("profileName").value = currentUser.username;
+  document.getElementById("profileEmail").value = currentUser.email;
+  document.getElementById("profilePassword").value = ""; // dejar vacío para no cambiar
+  showElement(profileModal);
+});
+
+// Cancelar edición de perfil
+cancelProfileBtn?.addEventListener("click", () => {
+  hideElement(profileModal);
+});
+
+// Gestión del formulario de edición de perfil
+profileForm?.addEventListener("submit", async e => {
+  e.preventDefault();
+  if (!currentUser) return;
+  const newName = e.target.profileName.value.trim();
+  const newPassword = e.target.profilePassword.value.trim();
+  try {
+    // Actualizar el nombre de usuario (displayName) si se cambió
+    if (newName && newName !== currentUser.username) {
+      await firebase.auth().currentUser.updateProfile({ displayName: newName });
+      await db.collection("users").doc(currentUser.uid).update({
+        username: newName
+      });
+      currentUser.username = newName;
+      userNameLabel.textContent = newName;
+    }
+    // Actualizar la contraseña; solo se efectúa si el campo no está vacío
+    if (newPassword) {
+      await firebase.auth().currentUser.updatePassword(newPassword);
+    }
+    alert("Perfil actualizado correctamente");
+    hideElement(profileModal);
+  } catch (err) {
+    console.error(err);
+    alert("Error al actualizar el perfil");
+  }
 });
 
 /* ================================
    INICIO DE LA APLICACIÓN
    ================================ */
-
 window.addEventListener("DOMContentLoaded", () => {
   setupAuthButtons();
   loadPublicCampaigns();
