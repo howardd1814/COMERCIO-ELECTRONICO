@@ -1,7 +1,7 @@
-/* ================================
-   app.js - Versión consolidada y actualizada
-   Integrando autenticación, gestión de campañas,
-   edición de perfil y manejo de foto de perfil
+/*/* ================================
+    app.js - Versión consolidada y actualizada
+    Integrando autenticación, gestión de campañas,
+    edición de perfil y manejo de foto de perfil
    ================================ */
 
 // Inicialización de Firebase (Firestore, Storage, Auth)
@@ -50,6 +50,8 @@ const profileModal = document.getElementById("profileModal");
 const profileForm = document.getElementById("profileForm");
 const cancelProfileBtn = document.getElementById("cancelProfileBtn");
 const editProfileBtn = document.getElementById("editProfile");
+const completeProfileLink = document.getElementById("completeProfileLink");
+
 
 // Elementos para cambiar foto de perfil
 const userAvatar = document.getElementById("userAvatar");
@@ -88,10 +90,12 @@ firebase.auth().onAuthStateChanged(async user => {
     currentUser = {
       email: user.email,
       username: user.displayName || user.email,
-      uid: user.uid
+      uid: user.uid,
+      photoURL: user.photoURL
     };
     // Actualiza la interfaz con el nombre completo y correo
     showUserBox(currentUser);
+
     
     // Mostrar foto de perfil: si existe foto (almacenada, por ejemplo, en currentUser.photoURL)
     if (user.photoURL) {
@@ -136,6 +140,10 @@ firebase.auth().onAuthStateChanged(async user => {
 function showUserBox(user) {
   userNameLabel.textContent = user.username;
   userEmailLabel.textContent = user.email;
+  const sidebarUserName = document.getElementById('sidebarUserName');
+  if (sidebarUserName) {
+    sidebarUserName.textContent = user.username;
+  }
   hideElement(authButtons);
   showElement(userBox);
   toggleSection('panel');
@@ -172,6 +180,144 @@ function toggleSection(sectionId) {
     }
   });
 }
+
+completeProfileLink?.addEventListener("click", (e) => {
+  e.preventDefault();
+  
+  // Recupera el usuario desde localStorage (asegúrate de que se guarde en 'loggedUser')
+  const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
+  if (!loggedUser || !loggedUser.role) {
+    alert("No se encontró información del usuario");
+    return;
+  }
+  
+  let formFields = "";
+  
+  if (loggedUser.role.toLowerCase() === "estudiante") {
+    formFields = `
+      <div>
+        <label for="universidad" class="block text-sm font-medium text-gray-700">Universidad *</label>
+        <input type="text" id="universidad" name="universidad" required class="mt-1 block w-full border rounded-md p-2">
+      </div>
+      <div>
+        <label for="carrera" class="block text-sm font-medium text-gray-700">Carrera o programa académico *</label>
+        <input type="text" id="carrera" name="carrera" required class="mt-1 block w-full border rounded-md p-2">
+      </div>
+      <div>
+        <label for="semestre" class="block text-sm font-medium text-gray-700">Semestre *</label>
+        <input type="text" id="semestre" name="semestre" required class="mt-1 block w-full border rounded-md p-2">
+      </div>
+      <div>
+        <label for="ciudad" class="block text-sm font-medium text-gray-700">Ciudad de residencia *</label>
+        <input type="text" id="ciudad" name="ciudad" required class="mt-1 block w-full border rounded-md p-2">
+      </div>
+      <div>
+        <label for="telefono" class="block text-sm font-medium text-gray-700">Teléfono de contacto</label>
+        <input type="text" id="telefono" name="telefono" class="mt-1 block w-full border rounded-md p-2">
+      </div>
+      <div>
+        <label for="portfolio" class="block text-sm font-medium text-gray-700">Enlace de portafolio / CV</label>
+        <input type="text" id="portfolio" name="portfolio" class="mt-1 block w-full border rounded-md p-2">
+      </div>
+    `;
+  } else if (loggedUser.role.toLowerCase() === "patrocinador") {
+    formFields = `
+      <div>
+        <label for="nombre" class="block text-sm font-medium text-gray-700">Nombre de empresa o nombre personal *</label>
+        <input type="text" id="nombre" name="nombre" required class="mt-1 block w-full border rounded-md p-2">
+      </div>
+      <div>
+        <label for="tipoPatrocinador" class="block text-sm font-medium text-gray-700">Tipo de patrocinador *</label>
+        <select id="tipoPatrocinador" name="tipoPatrocinador" required class="mt-1 block w-full border rounded-md p-2">
+          <option value="">Seleccione...</option>
+          <option value="empresa">Empresa</option>
+          <option value="particular">Particular</option>
+        </select>
+      </div>
+      <div>
+        <label for="areaInteres" class="block text-sm font-medium text-gray-700">Área de interés *</label>
+        <select id="areaInteres" name="areaInteres" required class="mt-1 block w-full border rounded-md p-2">
+          <option value="">Seleccione...</option>
+          <option value="tecnologia">Tecnología</option>
+          <option value="salud">Salud</option>
+          <option value="educacion">Educación</option>
+        </select>
+      </div>
+      <div>
+        <label for="presupuesto" class="block text-sm font-medium text-gray-700">Presupuesto estimado de apoyo</label>
+        <input type="number" id="presupuesto" name="presupuesto" class="mt-1 block w-full border rounded-md p-2">
+      </div>
+      <div>
+        <label for="ubicacion" class="block text-sm font-medium text-gray-700">Ciudad o país *</label>
+        <input type="text" id="ubicacion" name="ubicacion" required class="mt-1 block w-full border rounded-md p-2">
+      </div>
+      <div>
+        <label for="correoContacto" class="block text-sm font-medium text-gray-700">Correo de contacto *</label>
+        <input type="email" id="correoContacto" name="correoContacto" required class="mt-1 block w-full border rounded-md p-2">
+      </div>
+    `;
+  } else {
+    formFields = `<p class="text-red-500">El rol del usuario no está definido correctamente.</p>`;
+  }
+  
+  // Inyecta el HTML del formulario en el contenedor del modal
+  const modalContainer = document.getElementById("extraDataModal");
+  modalContainer.innerHTML = `
+    <div class="bg-white p-6 rounded shadow-lg max-w-md w-full">
+      <h3 class="text-xl font-bold mb-4">Completar Información</h3>
+      <form id="profileExtraForm" class="space-y-4">
+        ${formFields}
+        <div class="flex justify-end gap-2">
+          <button type="button" id="cancelExtraBtn" class="bg-gray-300 text-gray-800 px-4 py-2 rounded">Cancelar</button>
+          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Guardar información</button>
+        </div>
+      </form>
+    </div>
+  `;
+  
+  // Muestra el modal removiendo la clase "hidden"
+  modalContainer.classList.remove("hidden");
+  
+  // Evento para el botón "Cancelar" que cierra el modal
+  document.getElementById("cancelExtraBtn").addEventListener("click", () => {
+    modalContainer.classList.add("hidden");
+  });
+  
+  // Evento para el submit del formulario
+  document.getElementById("profileExtraForm").addEventListener("submit", (evt) => {
+    evt.preventDefault();
+    
+    // Recoger los datos del formulario
+    const formData = new FormData(evt.target);
+    const extraData = {};
+    formData.forEach((value, key) => {
+      extraData[key] = value.trim();
+    });
+    
+    // Validación básica: se omiten los campos opcionales (telefono, portfolio, presupuesto)
+    let valid = true;
+    for (let [key, value] of Object.entries(extraData)) {
+      if (!value && !["telefono", "portfolio", "presupuesto"].includes(key)) {
+        valid = false;
+        break;
+      }
+    }
+    
+    if (!valid) {
+      alert("Por favor completa todos los campos obligatorios.");
+      return;
+    }
+    
+    // Guarda la información en localStorage (o envíala al backend)
+    const profileKey = `userProfile_${loggedUser.uid}`;
+    localStorage.setItem(profileKey, JSON.stringify(extraData));
+    alert("Información guardada correctamente.");
+    
+    // Oculta el modal
+    modalContainer.classList.add("hidden");
+  });
+});
+
 
 function setupAuthButtons() {
   const loginBtn = document.getElementById("loginBtn");
@@ -543,6 +689,7 @@ editProfileBtn?.addEventListener("click", () => {
   showElement(profileModal);
 });
 
+
 cancelProfileBtn?.addEventListener("click", () => {
   hideElement(profileModal);
 });
@@ -607,6 +754,36 @@ uploadPhotoBtn?.addEventListener("click", async () => {
     console.error(err);
     alert("Error al actualizar la foto de perfil");
   }
+});
+
+function verDetalleCampaña(id) {
+  fetch('projects.json')
+    .then(res => res.json())
+    .then(data => {
+      const proyecto = data.find(p => p.id === id);
+      if (!proyecto) return alert('Campaña no encontrada');
+
+      const detalle = document.getElementById('detalleContenido');
+      detalle.innerHTML = `
+        <h2 class="text-2xl font-bold text-blue-700">${proyecto.titulo}</h2>
+        <p>${proyecto.descripcion}</p>
+        ${proyecto.imagen ? `<img src="${proyecto.imagen}" alt="${proyecto.titulo}" class="w-full rounded">` : ''}
+        ${proyecto.video ? `<iframe src="${proyecto.video}" class="w-full h-60 rounded" allowfullscreen></iframe>` : ''}
+        <p><strong>Meta:</strong> $${proyecto.meta}</p>
+        <p><strong>Recaudado:</strong> $${proyecto.recaudado || 0}</p>
+        <p><strong>Categoría:</strong> ${proyecto.categoria || 'N/A'}</p>
+        <p><strong>Universidad:</strong> ${proyecto.universidad || 'N/A'}</p>
+        <button onclick="mostrarFormularioApoyo('${proyecto.id}')" class="mt-4 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+          Apoyar este proyecto
+        </button>
+      `;
+      document.getElementById('detalleModal').classList.remove('hidden');
+    });
+}
+
+// Cerrar el modal
+document.getElementById('cerrarDetalleBtn').addEventListener('click', () => {
+  document.getElementById('detalleModal').classList.add('hidden');
 });
 
 // ---------------------------
