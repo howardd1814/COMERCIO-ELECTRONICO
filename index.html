@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Platformstudentctg</title>
 
-    <!-- Preconnect para mejorar la carga de fuentes -->
+    <!-- Preconnect para Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
@@ -19,10 +19,7 @@
     />
     <link rel="icon" href="/favicon.ico" />
 
-    <meta
-      name="description"
-      content="Platformstudentctg conecta proyectos con patrocinadores."
-    />
+    <meta name="description" content="Platformstudentctg conecta proyectos con patrocinadores." />
     <meta name="keywords" content="estudiantes, proyectos, patrocinadores" />
 
     <style>
@@ -30,13 +27,15 @@
         font-family: 'Inter', sans-serif;
         scroll-behavior: smooth;
       }
+      /* Clase para ocultar elementos */
+      .hidden {
+        display: none;
+      }
     </style>
   </head>
   <body class="bg-white text-gray-800">
     <!-- HEADER -->
-    <header
-      class="flex justify-between items-center px-6 py-4 shadow-md sticky top-0 bg-white z-50"
-    >
+    <header class="flex justify-between items-center px-6 py-4 shadow-md sticky top-0 bg-white z-50">
       <div data-section="landing" class="text-xl font-bold text-blue-700 cursor-pointer nav-link">
         Platformstudentctg
       </div>
@@ -44,27 +43,40 @@
         <button data-section="about" class="scroll-link text-sm text-gray-700 hover:underline nav-link" aria-label="¿Qué hacemos?">
           ¿Qué hacemos?
         </button>
-        <button data-section="muro" class="scroll-link text-sm text-gray-700 hover:underline nav-link" aria-label="Campañas públicas">
+        <!-- Botón "Campañas" se muestra sólo para usuarios autenticados -->
+        <button id="btnCampaigns" data-section="muro" class="hidden scroll-link text-sm text-gray-700 hover:underline nav-link" aria-label="Campañas">
           Campañas
         </button>
         <button data-section="contact" class="scroll-link text-sm text-gray-700 hover:underline nav-link" aria-label="Contáctanos">
           Contáctanos
         </button>
+        <!-- User Box: se muestra al iniciar sesión -->
         <div id="userBox" class="hidden relative">
+          <!-- Botón de menú de usuario con nombre completo e ícono de perfil -->
           <button id="userMenuBtn" class="text-sm text-blue-700 font-semibold flex items-center gap-2" aria-label="Menú de usuario">
-            <span id="userNameLabel"></span>
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" />
+            <span id="userNameLabel">Usuario</span>
+            <!-- Ícono de perfil (puedes reemplazarlo con otro si lo deseas) -->
+            <svg class="w-6 h-6 text-blue-700" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
             </svg>
           </button>
-          <div id="userDropdown" class="absolute right-0 mt-2 bg-white border rounded shadow-md w-48 hidden z-50 p-4">
-            <p class="text-sm text-gray-700 font-semibold" id="userEmailLabel"></p>
+          <!-- Menú desplegable del usuario -->
+          <div id="userDropdown" class="absolute right-0 mt-2 bg-white border rounded shadow-md w-56 hidden z-50 p-4">
+            <!-- Opción para editar perfil -->
+            <button id="editProfileBtn" class="w-full text-left text-sm text-gray-700 hover:underline">
+              Editar Perfil
+            </button>
+            <!-- Separador -->
+            <hr class="my-2" />
+            <!-- Mostrar correo para referencia -->
+            <p class="text-sm text-gray-600" id="userEmailLabel">correo@ejemplo.com</p>
             <button id="logoutBtn" class="mt-4 bg-red-500 hover:bg-red-600 text-white text-sm px-3 py-1 rounded w-full">
               Cerrar sesión
             </button>
           </div>
         </div>
       </nav>
+      <!-- Botones de autenticación (se ocultan cuando el usuario inicia sesión) -->
       <div id="authButtons" class="flex gap-2">
         <button id="loginBtn" class="bg-blue-600 text-white px-4 py-2 rounded">
           Iniciar sesión
@@ -102,7 +114,8 @@
         <div id="publicList" class="grid gap-6 mt-6">
           <p class="text-center text-gray-500">Aún no hay campañas disponibles.</p>
         </div>
-        <button id="createCampaignBtn" class="mt-6 bg-green-600 text-white px-6 py-3 rounded hover:bg-green-700">
+        <!-- Botón "Crear Campaña" en el muro (opcional) - se muestra solo si el usuario está logueado -->
+        <button id="createCampaignBtn" class="hidden mt-6 bg-green-600 text-white px-6 py-3 rounded hover:bg-green-700">
           Crear Campaña
         </button>
       </section>
@@ -110,8 +123,12 @@
       <!-- PANEL DEL ESTUDIANTE (Dashboard) -->
       <section id="panel" class="hidden max-w-4xl mx-auto mt-10 p-6 bg-white rounded shadow-lg">
         <h2 class="text-2xl font-bold text-green-700 mb-4">Panel de Campañas</h2>
-        <!-- FORMULARIO PARA CREAR CAMPAÑA (inicialmente privada) -->
-        <form id="newCampaignForm" class="space-y-4">
+        <!-- Botón para desplegar el formulario de "Crear Campaña" dentro del panel -->
+        <button id="panelCreateBtn" class="mb-4 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+          Crear Campaña
+        </button>
+        <!-- Formulario para crear o editar campaña (oculto por defecto) -->
+        <form id="newCampaignForm" class="hidden space-y-4">
           <input name="titulo" type="text" placeholder="Título del Proyecto" required class="w-full px-4 py-3 border rounded-md" />
           <textarea name="descripcion" rows="4" placeholder="Descripción del Proyecto" required class="w-full px-4 py-3 border rounded-md"></textarea>
           <input name="meta" type="number" placeholder="Meta económica ($)" required class="w-full px-4 py-3 border rounded-md" />
@@ -121,7 +138,7 @@
             Guardar Campaña (Privada)
           </button>
         </form>
-        <!-- LISTA DE CAMPAÑAS DEL USUARIO -->
+        <!-- Lista de campañas propias -->
         <div class="mt-8">
           <h3 class="text-xl font-semibold text-gray-800 mb-4">Mis Campañas</h3>
           <div id="campaignList" class="grid gap-6"></div>
@@ -168,8 +185,19 @@
         </form>
       </section>
 
-      <!-- MODAL PARA INFORMACIÓN ADICIONAL (después de Google login) -->
-      <div id="extraDataModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+      <!-- CONTACTO -->
+      <section id="contact" class="mt-24 p-6 max-w-4xl mx-auto bg-gray-50 rounded shadow">
+        <h2 class="text-2xl font-semibold mb-2 text-blue-700">Contáctanos</h2>
+        <p class="text-gray-700 mb-2">📧 Correo: contacto@platformstudentctg.com</p>
+        <p class="text-gray-700">
+          🌐 Redes sociales: 
+          <a href="#" class="text-blue-600 underline">Instagram</a>, 
+          <a href="#" class="text-blue-600 underline">LinkedIn</a>
+        </p>
+      </section>
+
+      <!-- MODAL: Datos Extra tras Login (fecha de nacimiento y tipo de usuario) -->
+      <div id="extraDataModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white p-6 rounded max-w-md w-full shadow-lg">
           <h3 class="text-xl font-semibold mb-4">Completa tu información</h3>
           <form id="extraDataForm" class="space-y-4">
@@ -179,7 +207,7 @@
             </div>
             <div>
               <label for="userType" class="block text-sm font-medium text-gray-700">Tipo de usuario</label>
-              <select id="userType" name="userType" class="mt-1 block w-full border rounded-md px-3 py-2" required>
+              <select id="userType" name="userType" required class="mt-1 block w-full border rounded-md px-3 py-2">
                 <option value="estudiante">Estudiante</option>
                 <option value="patrocinador">Patrocinador</option>
               </select>
@@ -191,15 +219,54 @@
         </div>
       </div>
 
-      <!-- MODAL DE POSTULACIÓN A UN PROYECTO -->
-      <div id="projectModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+      <!-- MODAL: Postulación a una campaña -->
+      <div id="projectModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white p-6 rounded max-w-md w-full shadow-lg">
-          <h3 class="text-xl font-semibold mb-2">Postularme al Proyecto</h3>
+          <h3 class="text-xl font-semibold mb-2">Postularme a la Campaña</h3>
           <textarea id="applyMessage" rows="4" placeholder="Escribe un mensaje al creador" class="w-full border p-2 rounded"></textarea>
           <div class="flex justify-end mt-4 gap-2">
-            <button id="cancelModalBtn" type="button" class="text-gray-600 border px-4 py-2 rounded">Cancelar</button>
-            <button id="applyBtn" type="button" class="bg-blue-600 text-white px-4 py-2 rounded">Enviar</button>
+            <button id="cancelModalBtn" type="button" class="text-gray-600 border px-4 py-2 rounded">
+              Cancelar
+            </button>
+            <button id="applyBtn" type="button" class="bg-blue-600 text-white px-4 py-2 rounded">
+              Enviar
+            </button>
           </div>
+        </div>
+      </div>
+
+      <!-- MODAL: Editar Perfil (Información personal del usuario) -->
+      <div id="profileModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded max-w-md w-full shadow-lg">
+          <h3 class="text-xl font-semibold mb-4">Editar Perfil</h3>
+          <form id="profileForm" class="space-y-4">
+            <div>
+              <label for="profileName" class="block text-sm font-medium text-gray-700">
+                Nombre Completo
+              </label>
+              <input id="profileName" name="profileName" type="text" required class="mt-1 block w-full border rounded-md px-3 py-2" />
+            </div>
+            <div>
+              <label for="profileEmail" class="block text-sm font-medium text-gray-700">
+                Correo Electrónico
+              </label>
+              <input id="profileEmail" name="profileEmail" type="email" required class="mt-1 block w-full border rounded-md px-3 py-2" readonly />
+            </div>
+            <div>
+              <label for="profilePassword" class="block text-sm font-medium text-gray-700">
+                Contraseña (dejar en blanco para no cambiar)
+              </label>
+              <input id="profilePassword" name="profilePassword" type="password" class="mt-1 block w-full border rounded-md px-3 py-2" />
+            </div>
+            <div class="flex justify-end gap-2">
+              <button type="button" id="cancelProfileBtn" class="border px-4 py-2 rounded text-gray-600">
+                Cancelar
+              </button>
+              <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">
+                Guardar
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </main>
@@ -214,6 +281,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-storage-compat.js"></script>
+    
     <!-- Configuración de Firebase -->
     <script>
       const firebaseConfig = {
@@ -227,6 +295,7 @@
       };
       firebase.initializeApp(firebaseConfig);
     </script>
+    
     <!-- Archivo principal de la aplicación -->
     <script src="app.js" defer></script>
   </body>
