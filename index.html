@@ -150,12 +150,13 @@
             <!-- Sección de búsqueda y filtros -->
             <div class="mb-4 flex flex-col md:flex-row items-center gap-4">
               <input type="text" id="searchCampaign" placeholder="Buscar campañas..." class="border px-4 py-2 rounded w-full md:w-auto">
-              <div class="flex gap-2">
-                <button class="filter-btn bg-gray-200 px-4 py-2 rounded" data-filter="publicadas">Publicadas</button>
-                <button class="filter-btn bg-gray-200 px-4 py-2 rounded" data-filter="borradores">Borradores</button>
-                <button class="filter-btn bg-gray-200 px-4 py-2 rounded" data-filter="finalizadas">Finalizadas</button>
+              <div class="flex gap-4 mb-4">
+                <button id="filterBorradores" class="px-4 py-2 bg-gray-200 rounded">Borradores</button>
+                <button id="filterPublicadas" class="px-4 py-2 bg-gray-200 rounded">Publicadas</button>
+                <button id="filterFinalizadas" class="px-4 py-2 bg-gray-200 rounded">Finalizadas</button>
               </div>
             </div>
+            <div id="campaignFilterResults" class="mt-4"></div>
             <!-- Botón para mostrar/ocultar el formulario de "Crear Campaña" -->
             <button id="panelCreateBtn" class="mb-4 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
               Crear Campaña
