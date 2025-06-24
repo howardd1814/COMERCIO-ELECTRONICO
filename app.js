@@ -71,6 +71,7 @@ let currentUser = null;
 let editingCampaignId = null;
 let campaignImageBase64 = "";         // Para almacenar la imagen convertida a base64
 let publicCampaigns = [];
+let interactionHistory = JSON.parse(localStorage.getItem("interactionHistory")) || []; // Historial para recomendación (array de categorías)
 
 // ---------------------------
 // Utilidades para mostrar/ocultar elementos
@@ -454,11 +455,11 @@ extraDataForm?.addEventListener("submit", e => {
 });
 
 // ===============================
-// GESTIÓN DE CAMPAÑAS (Crear, Editar, Eliminar, Publicar)
+// GESTIÓN DE CAMPAÑAS Y PANEL DE INVERSORES
 // ===============================
 
 // --- Conversión de imagen a base64 ---
-// Asigna el input file para la imagen (debe tener id="campaignImage" en el HTML)
+// El input file debe tener id="campaignImage" en el HTML.
 const campaignImageInput = document.getElementById("campaignImage");
 if (campaignImageInput) {
   campaignImageInput.addEventListener("change", function () {
@@ -466,7 +467,7 @@ if (campaignImageInput) {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = function () {
-        campaignImageBase64 = reader.result; // Guarda la imagen en formato base64
+        campaignImageBase64 = reader.result;
         console.log("Imagen convertida a base64:", campaignImageBase64);
       };
       reader.readAsDataURL(file);
@@ -474,7 +475,8 @@ if (campaignImageInput) {
   });
 }
 
-// --- Guardar Campaña como "Borrador" en localStorage ---
+// --- Guardar Campaña como "Borrador" ---
+// El formulario debe tener id="newCampaignForm".
 newCampaignForm?.addEventListener("submit", e => {
   e.preventDefault();
   if (!currentUser) return;
@@ -483,12 +485,12 @@ newCampaignForm?.addEventListener("submit", e => {
   const titulo = e.target.titulo.value.trim();
   const descripcion = e.target.descripcion.value.trim();
   const meta = e.target.meta.value.trim();
-  // Para la imagen, usamos la variable global campaignImageBase64 (ya convertida)
-  const imagen = campaignImageBase64;
   const video = e.target.video.value.trim();
+  // Campos opcionales para filtrado:
+  const categoria = e.target.categoria ? e.target.categoria.value.trim() : "general";
+  const universidad = e.target.universidad ? e.target.universidad.value.trim() : "No definida";
 
-  // Validaciones básicas
-  if (!titulo || !descripcion || !meta || !imagen) {
+  if (!titulo || !descripcion || !meta || !campaignImageBase64) {
     alert("Por favor completa todos los campos requeridos");
     return;
   }
@@ -497,37 +499,32 @@ newCampaignForm?.addEventListener("submit", e => {
     alert("La meta debe ser un número positivo");
     return;
   }
-
-  // Armar el objeto campaña
+  
+  // Armar el objeto campaña; para una campaña nueva, el estado es "borrador"
   const campaignData = {
     id: editingCampaignId ? editingCampaignId : Date.now().toString(),
     creador: currentUser.email,
     titulo,
     descripcion,
     meta: metaNumber,
-    imagen,
+    imagen: campaignImageBase64,
     video,
-    estado: editingCampaignId ? undefined : "borrador",  // Campaña nueva: estado "borrador"
+    categoria,
+    universidad,
+    estado: editingCampaignId ? undefined : "borrador",
     vistas: editingCampaignId ? undefined : 0,
     aportes: editingCampaignId ? undefined : 0,
     createdAt: editingCampaignId ? undefined : new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
 
-  // Recuperar las campañas guardadas en localStorage o crear un arreglo si no existe
+  // Recuperar campañas de localStorage o iniciar un arreglo vacío
   let campaigns = JSON.parse(localStorage.getItem("campaigns")) || [];
   if (editingCampaignId) {
-    // Actualizar campaña existente
-    campaigns = campaigns.map(camp => {
-      if (camp.id === editingCampaignId) {
-        return { ...camp, ...campaignData, id: editingCampaignId };
-      }
-      return camp;
-    });
+    campaigns = campaigns.map(camp => (camp.id === editingCampaignId ? { ...camp, ...campaignData, id: editingCampaignId } : camp));
     alert("Campaña actualizada correctamente");
     editingCampaignId = null;
   } else {
-    // Agregar campaña nueva
     campaigns.push(campaignData);
     alert("Campaña guardada correctamente");
   }
@@ -535,42 +532,43 @@ newCampaignForm?.addEventListener("submit", e => {
   newCampaignForm.reset();
   campaignImageBase64 = "";
   hideElement(newCampaignForm);
+  // Actualiza la lista de campañas del creador y las públicas
   loadUserCampaigns();
   loadPublicCampaigns();
 });
 
-// --- Cargar Campañas del Usuario ---
+// --- Cargar Campañas del Usuario (Borradores) ---
+// Se muestran solo las campañas creadas por el usuario con estado "borrador"
 async function loadUserCampaigns() {
   if (!currentUser) return;
   let campaigns = JSON.parse(localStorage.getItem("campaigns")) || [];
-  let userCampaigns = campaigns.filter(camp => camp.creador === currentUser.email);
+  let userCampaigns = campaigns.filter(camp => camp.creador === currentUser.email && camp.estado === "borrador");
   campaignList.innerHTML = "";
   userCampaigns.forEach(campaign => {
     renderUserCampaignCard(campaign);
   });
 }
 
-// --- Renderizar Tarjeta de Campaña en el Panel de Usuario ---
+// --- Renderizar Tarjeta de Campaña en el Panel del Creador ---
 function renderUserCampaignCard(campaign) {
   const card = document.createElement("div");
   card.className = "border p-4 rounded shadow bg-gray-50 relative";
   card.innerHTML = `
-    <h4 class="text-xl font-semibold text-blue-700 mb-1">${campaign.titulo}</h4>
+    <h4 class="text-xl font-semibold text-blue-700 mb-1 cursor-pointer" data-id="${campaign.id}">${campaign.titulo}</h4>
     <p class="text-gray-700 text-sm mb-2">${campaign.descripcion}</p>
     <p class="text-sm text-green-700 font-medium">Meta: $${campaign.meta}</p>
     <div class="text-xs text-gray-500 mt-2">👁️ ${campaign.vistas || 0} visitas | 🤝 ${campaign.aportes || 0} aportes</div>
     <div class="flex gap-2 mt-3">
-      <button class="bg-yellow-500 text-white px-3 py-1 rounded text-sm" data-action="edit" data-id="${campaign.id}" aria-label="Editar campaña ${campaign.titulo}">Editar</button>
-      <button class="bg-red-600 text-white px-3 py-1 rounded text-sm" data-action="delete" data-id="${campaign.id}" aria-label="Eliminar campaña ${campaign.titulo}">Eliminar</button>
-      ${currentUser.profile && currentUser.profile.subscriptionActive ? `<button class="bg-blue-600 text-white px-3 py-1 rounded text-sm" data-action="publish" data-id="${campaign.id}" aria-label="Publicar campaña ${campaign.titulo}">Publicar</button>` : ""}
+      <button class="bg-yellow-500 text-white px-3 py-1 rounded text-sm" data-action="edit" data-id="${campaign.id}">Editar</button>
+      <button class="bg-red-600 text-white px-3 py-1 rounded text-sm" data-action="delete" data-id="${campaign.id}">Eliminar</button>
+      <button class="bg-blue-600 text-white px-3 py-1 rounded text-sm" data-action="publicar" data-id="${campaign.id}">Quiero hacerla pública</button>
     </div>
   `;
+  // Título clickeable para mostrar detalles
+  card.querySelector("h4").addEventListener("click", () => showCampaignDetails(campaign));
   card.querySelector("[data-action='edit']").addEventListener("click", () => editCampaign(campaign.id));
   card.querySelector("[data-action='delete']").addEventListener("click", () => deleteCampaign(campaign.id));
-  const publishBtn = card.querySelector("[data-action='publish']");
-  if (publishBtn) {
-    publishBtn.addEventListener("click", () => publishCampaign(campaign.id));
-  }
+  card.querySelector("[data-action='publicar']").addEventListener("click", () => showPaymentModal(campaign.id));
   campaignList.appendChild(card);
 }
 
@@ -582,9 +580,11 @@ async function editCampaign(id) {
   newCampaignForm.titulo.value = campaign.titulo;
   newCampaignForm.descripcion.value = campaign.descripcion;
   newCampaignForm.meta.value = campaign.meta;
-  // Para la imagen, guardamos el valor en campaignImageBase64; nota: no se puede asignar valor al input file
+  // Para la imagen, se guarda en campaignImageBase64 (no se puede asignar valor al input file)
   campaignImageBase64 = campaign.imagen;
   newCampaignForm.video.value = campaign.video || "";
+  if(newCampaignForm.categoria) newCampaignForm.categoria.value = campaign.categoria || "";
+  if(newCampaignForm.universidad) newCampaignForm.universidad.value = campaign.universidad || "";
   editingCampaignId = id;
   showElement(newCampaignForm);
 }
@@ -600,93 +600,202 @@ async function deleteCampaign(id) {
   loadPublicCampaigns();
 }
 
-// --- Publicar Campaña (Simulación de pago) ---
-async function publishCampaign(id) {
-  if (!(currentUser.profile && currentUser.profile.subscriptionActive)) {
-    alert("No tienes suscripción activa para publicar campañas.");
-    return;
-  }
-  let campaigns = JSON.parse(localStorage.getItem("campaigns")) || [];
-  campaigns = campaigns.map(camp => {
-    if (camp.id === id) {
-      camp.estado = "publico";
-      camp.updatedAt = new Date().toISOString();
-    }
-    return camp;
+// --- Mostrar Detalles de la Campaña ---
+// Al hacer clic en el título se abre un modal que muestra descripción, imagen y meta.
+function showCampaignDetails(campaign) {
+  const modal = document.getElementById("campaignModal");
+  modal.innerHTML = `
+    <div class="bg-white p-6 rounded shadow-lg max-w-lg w-full">
+      <h3 class="text-2xl font-bold mb-4">${campaign.titulo}</h3>
+      <img src="${campaign.imagen}" alt="Imagen de ${campaign.titulo}" class="w-full h-60 object-cover rounded mb-4">
+      <p class="mb-4">${campaign.descripcion}</p>
+      <p class="font-semibold">Meta: $${campaign.meta}</p>
+      <button id="closeCampaignModal" class="mt-4 bg-gray-300 text-gray-800 px-4 py-2 rounded">Cerrar</button>
+    </div>
+  `;
+  showElement(modal);
+  document.getElementById("closeCampaignModal").addEventListener("click", () => {
+    hideElement(modal);
   });
-  localStorage.setItem("campaigns", JSON.stringify(campaigns));
-  alert("Campaña publicada");
-  loadUserCampaigns();
-  loadPublicCampaigns();
+}
+
+// --- Interfaz de Pago para Publicar Campaña ---
+// Al hacer clic en "Quiero hacerla pública" se abre un modal con el enlace a Wompi.
+// Tras simular el pago (redirigiendo a Wompi), se actualiza el estado de la campaña a "publicada".
+function showPaymentModal(campaignId) {
+  const modal = document.getElementById("paymentModal");
+  modal.innerHTML = `
+    <div class="bg-white p-6 rounded shadow-lg max-w-md w-full">
+      <p class="mb-4 text-center">Para publicar esta campaña debes pagar una suscripción mensual de 20.000 COP.</p>
+      <div class="flex justify-end gap-2">
+        <button id="cancelPayment" class="bg-gray-300 text-gray-800 px-4 py-2 rounded">Cancelar</button>
+        <button id="payWithWompi" class="bg-green-600 text-white px-4 py-2 rounded">Pagar con Wompi</button>
+      </div>
+    </div>
+  `;
+  showElement(modal);
+
+  document.getElementById("cancelPayment").addEventListener("click", () => {
+    hideElement(modal);
+  });
+
+  document.getElementById("payWithWompi").addEventListener("click", () => {
+    // Redirige a la pasarela de pago
+    window.location.href = "https://checkout.wompi.co/l/test_VPOS_Em91ui";
+    // Simula el pago exitoso y actualiza el estado de la campaña a "publicada"
+    let campaigns = JSON.parse(localStorage.getItem("campaigns")) || [];
+    campaigns = campaigns.map(camp => {
+      if (camp.id === campaignId) {
+        camp.estado = "publicada";
+        camp.updatedAt = new Date().toISOString();
+      }
+      return camp;
+    });
+    localStorage.setItem("campaigns", JSON.stringify(campaigns));
+    alert("La campaña ha sido publicada.");
+    hideElement(modal);
+    loadUserCampaigns();
+    loadPublicCampaigns();
+  });
 }
 
 // --- Cargar Campañas Públicas ---
+// Se muestran campañas con estado "publicada" de todos los usuarios.
 async function loadPublicCampaigns() {
   let campaigns = JSON.parse(localStorage.getItem("campaigns")) || [];
-  let publicCampaigns = campaigns.filter(camp => camp.estado === "publico");
+  let publicCampaigns = campaigns.filter(camp => camp.estado === "publicada");
   publicList.innerHTML = "";
   publicCampaigns.forEach(campaign => {
     renderPublicCampaignCard(campaign);
   });
   if (publicList.innerHTML.trim() === "") {
-    publicList.innerHTML = `<p class="text-center text-gray-500">Aún no hay campañas disponibles.</p>`;
+    publicList.innerHTML = `<p class="text-center text-gray-500">Aún no hay campañas publicadas.</p>`;
   }
 }
 
 // --- Renderizar Tarjeta de Campaña Pública ---
 function renderPublicCampaignCard(campaign) {
   const div = document.createElement("div");
-  div.className = "border rounded p-4 shadow";
+  div.className = "border rounded p-4 shadow mb-4";
   div.innerHTML = `
     <img src="${campaign.imagen}" alt="Imagen del proyecto ${campaign.titulo}" class="w-full h-40 object-cover rounded">
-    <h3 class="font-bold text-lg mt-2">${campaign.titulo}</h3>
+    <h3 class="font-bold text-lg mt-2 text-blue-700 cursor-pointer">${campaign.titulo}</h3>
     <p class="text-gray-700">${campaign.descripcion.slice(0, 100)}...</p>
-    <button data-action="openModal" data-id="${campaign.id}" class="text-blue-600 underline mt-2" aria-label="Ver más detalles sobre la campaña ${campaign.titulo}">Ver más</button>
+    <p class="font-semibold">Meta: $${campaign.meta}</p>
   `;
-  div.querySelector("[data-action='openModal']").addEventListener("click", () => openCampaignModal(campaign.id));
+  div.querySelector("h3").addEventListener("click", () => {
+    showCampaignDetails(campaign);
+  });
+  // Botón para "Apoyar proyecto" y simular aporte.
+  const apoyarBtn = document.createElement("button");
+  apoyarBtn.textContent = "Apoyar proyecto";
+  apoyarBtn.className = "bg-purple-600 text-white px-3 py-1 rounded mt-2";
+  apoyarBtn.addEventListener("click", () => {
+    let campaigns = JSON.parse(localStorage.getItem("campaigns")) || [];
+    campaigns = campaigns.map(camp => {
+      if (camp.id === campaign.id) {
+        camp.aportes = (camp.aportes || 0) + 1;
+      }
+      return camp;
+    });
+    localStorage.setItem("campaigns", JSON.stringify(campaigns));
+    // Registrar la categoría en el historial de interacciones (para recomendaciones)
+    let interactionHistory = JSON.parse(localStorage.getItem("interactionHistory")) || [];
+    interactionHistory.push(campaign.categoria);
+    localStorage.setItem("interactionHistory", JSON.stringify(interactionHistory));
+    alert("¡Has apoyado el proyecto!");
+    loadPublicCampaigns();
+  });
+  div.appendChild(apoyarBtn);
   publicList.appendChild(div);
 }
 
-// --- Abrir Modal de Campaña ---
-function openCampaignModal(id) {
+// ---------- PANEL PARA INVERSORES ----------
+// Filtrado de campañas en el panel de inversionistas.
+// Se asume la existencia de selectores en el HTML con los IDs "filterCategoria", "filterEstado", "filterUniversidad".
+// Además, existe un contenedor con id "investorCampaignList" donde se mostrarán las campañas filtradas.
+function loadInvestorPanel() {
   let campaigns = JSON.parse(localStorage.getItem("campaigns")) || [];
-  const campaign = campaigns.find(camp => camp.id === id);
-  if (!campaign) {
-    alert("Campaña no encontrada");
-    return;
+  // Solo se muestran las campañas publicadas.
+  let visibleCampaigns = campaigns.filter(camp => camp.estado === "publicada");
+  
+  // Aplicar filtros de los selectores (si existen).
+  const filtroCategoria = document.getElementById("filterCategoria")?.value || "";
+  const filtroEstado = document.getElementById("filterEstado")?.value || "";
+  const filtroUniversidad = document.getElementById("filterUniversidad")?.value || "";
+  
+  if (filtroCategoria) {
+    visibleCampaigns = visibleCampaigns.filter(camp => camp.categoria === filtroCategoria);
   }
-  document.getElementById("applyBtn").onclick = () => applyToCampaign(id);
-  projectModal.classList.remove("hidden");
+  if (filtroEstado) {
+    visibleCampaigns = visibleCampaigns.filter(camp => camp.estado === filtroEstado);
+  }
+  if (filtroUniversidad) {
+    visibleCampaigns = visibleCampaigns.filter(camp => camp.universidad === filtroUniversidad);
+  }
+  
+  // Simulación de recomendación por afinidad: ordenar según la categoría más apoyada en el historial.
+  let interactionHistory = JSON.parse(localStorage.getItem("interactionHistory")) || [];
+  if (interactionHistory.length > 0) {
+    const counts = {};
+    interactionHistory.forEach(cat => {
+      counts[cat] = (counts[cat] || 0) + 1;
+    });
+    const favoriteCategory = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
+    visibleCampaigns.sort((a, b) => {
+      if (a.categoria === favoriteCategory && b.categoria !== favoriteCategory) return -1;
+      if (b.categoria === favoriteCategory && a.categoria !== favoriteCategory) return 1;
+      return 0;
+    });
+  }
+  
+  const container = document.getElementById("investorCampaignList");
+  container.innerHTML = "";
+  if (visibleCampaigns.length === 0) {
+    container.innerHTML = `<p class="text-center text-gray-500">No se encontraron campañas.</p>`;
+  } else {
+    visibleCampaigns.forEach(camp => {
+      const card = document.createElement("div");
+      card.className = "border p-4 rounded shadow mb-4";
+      card.innerHTML = `
+        <h4 class="text-xl font-semibold text-blue-700 mb-1 cursor-pointer">${camp.titulo}</h4>
+        <p class="text-gray-700">${camp.descripcion.slice(0, 100)}...</p>
+        <p class="font-semibold">Meta: $${camp.meta}</p>
+      `;
+      card.querySelector("h4").addEventListener("click", () => showCampaignDetails(camp));
+      const btnApoyar = document.createElement("button");
+      btnApoyar.textContent = "Apoyar proyecto";
+      btnApoyar.className = "bg-purple-600 text-white px-3 py-1 rounded mt-2";
+      btnApoyar.addEventListener("click", () => {
+        let campaigns = JSON.parse(localStorage.getItem("campaigns")) || [];
+        campaigns = campaigns.map(campObj => {
+          if (campObj.id === camp.id) {
+            campObj.aportes = (campObj.aportes || 0) + 1;
+          }
+          return campObj;
+        });
+        localStorage.setItem("campaigns", JSON.stringify(campaigns));
+        let interactionHistory = JSON.parse(localStorage.getItem("interactionHistory")) || [];
+        interactionHistory.push(camp.categoria);
+        localStorage.setItem("interactionHistory", JSON.stringify(interactionHistory));
+        alert("¡Has apoyado el proyecto!");
+        loadInvestorPanel();
+      });
+      card.appendChild(btnApoyar);
+      container.appendChild(card);
+    });
+  }
 }
 
-// --- Postulación a Campaña ---
-async function applyToCampaign(campaignId) {
-  const message = applyMessage.value;
-  if (!currentUser) {
-    alert("Debes iniciar sesión para postularte");
-    return;
-  }
-  try {
-    // Para simular la postulación, guardamos la solicitud en localStorage (o podrías implementar otra lógica)
-    let applications = JSON.parse(localStorage.getItem("applications")) || [];
-    applications.push({
-      campaignId,
-      applicant: currentUser.email,
-      message,
-      date: new Date().toISOString()
-    });
-    localStorage.setItem("applications", JSON.stringify(applications));
-    alert("Postulación enviada");
-    applyMessage.value = "";
-    projectModal.classList.add("hidden");
-  } catch (err) {
-    console.error(err);
-    alert("Error al enviar la postulación");
-  }
+// Asignar listeners para cambios en los selectores del panel de inversionistas
+document.getElementById("filterCategoria")?.addEventListener("change", loadInvestorPanel);
+document.getElementById("filterEstado")?.addEventListener("change", loadInvestorPanel);
+document.getElementById("filterUniversidad")?.addEventListener("change", loadInvestorPanel);
+
+// Si el usuario es inversionista, cargar su panel al inicio
+if (currentUser && currentUser.role === "inversionista") {
+  loadInvestorPanel();
 }
-cancelModalBtn?.addEventListener("click", () => {
-  projectModal.classList.add("hidden");
-});
 
 // ---------------------------
 // Botones para mostrar formularios y secciones
@@ -809,6 +918,60 @@ function verDetalleCampaña(id) {
 document.getElementById('cerrarDetalleBtn').addEventListener('click', () => {
   document.getElementById('detalleModal').classList.add('hidden');
 });
+
+// ----- Función para filtrar campañas por estado -----
+function filtrarCampañasPorEstado(estado) {
+  // Recupera el array de campañas de localStorage
+  const campaigns = JSON.parse(localStorage.getItem("campaigns")) || [];
+  let filtered = [];
+  
+  if (estado === "borrador") {
+    // Mostrar solo las campañas del usuario activo con estado "borrador"
+    if (currentUser) {
+      filtered = campaigns.filter(camp => camp.estado === "borrador" && camp.creador === currentUser.email);
+    } else {
+      filtered = [];
+    }
+  } else {
+    // Para "publicada" y "finalizada" mostrar campañas de todos los usuarios
+    filtered = campaigns.filter(camp => camp.estado === estado);
+  }
+  
+  // Actualiza el DOM en el contenedor asignado para los filtros
+  const container = document.getElementById("campaignFilterResults");
+  container.innerHTML = "";
+  
+  if (filtered.length === 0) {
+    container.innerHTML = `<p class="text-center text-gray-500">No se encontraron campañas en estado "${estado}".</p>`;
+  } else {
+    filtered.forEach(camp => {
+      // Se crea una tarjeta simple por campaña; puedes personalizar el markup según tu UI
+      const card = document.createElement("div");
+      card.className = "border p-4 rounded mb-2";
+      card.innerHTML = `
+        <h4 class="font-bold text-xl">${camp.titulo}</h4>
+        <p>${camp.descripcion}</p>
+        <p class="text-sm text-gray-500">Meta: $${camp.meta}</p>
+        <p class="text-sm">Estado: ${camp.estado}</p>
+      `;
+      container.appendChild(card);
+    });
+  }
+}
+
+// ----- Asignar listeners a los botones de filtrado -----
+document.getElementById("filterBorradores")?.addEventListener("click", () => {
+  filtrarCampañasPorEstado("borrador");
+});
+
+document.getElementById("filterPublicadas")?.addEventListener("click", () => {
+  filtrarCampañasPorEstado("publicada");
+});
+
+document.getElementById("filterFinalizadas")?.addEventListener("click", () => {
+  filtrarCampañasPorEstado("finalizada");
+});
+
 
 // ---------------------------
 // Inicio de la aplicación
