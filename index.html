@@ -353,24 +353,28 @@
         <!-- Panel del patrocinador -->
         <div id="investorCampaignList" class="mt-8"></div>
         <div class="flex gap-4 mb-4">
-          <select id="filterCategoria" class="border p-2 rounded">
-            <option value="">Todas las categorías</option>
-            <option value="tecnologia">Tecnología</option>
-            <option value="salud">Salud</option>
-            <option value="impacto social">Impacto social</option>
-          </select>
-          <select id="filterEstado" class="border p-2 rounded">
-            <option value="">Todos los estados</option>
-            <option value="publicada">Publicadas</option>
-            <option value="finalizada">Finalizadas</option>
-          </select>
-          <select id="filterUniversidad" class="border p-2 rounded">
-            <option value="">Todas las universidades</option>
-            <option value="Universidad 1">Universidad 1</option>
-            <option value="Universidad 2">Universidad 2</option>
-          </select>
-        </div>
-
+        <select id="filterCategoria" class="border p-2 rounded">
+          <option value="">Todas las categorías</option>
+          <option value="tecnologia">Tecnología</option>
+          <option value="salud">Salud</option>
+          <option value="impacto social">Impacto social</option>
+        </select>
+        <select id="filterEstado" class="border p-2 rounded">
+          <option value="">Todos los estados</option>
+          <option value="publicada">Publicadas</option>
+          <option value="finalizada">Finalizadas</option>
+        </select>
+        <select id="filterUniversidad" class="border p-2 rounded">
+          <option value="">Todas las universidades</option>
+          <option value="Universidad 1">Universidad 1</option>
+          <option value="Universidad 2">Universidad 2</option>
+        </select>
+      </div>
+      <!-- Solo mostrar este botón si el usuario es estudiante -->
+      <div id="createCampaignSection" class="hidden">
+        <!-- Tu botón de crear campaña -->
+        <button id="createCampaignBtn">Crear campaña</button>
+      </div>
     </main>
 
     <!-- FOOTER -->
