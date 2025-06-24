@@ -69,6 +69,7 @@ const uploadPhotoBtn = document.getElementById("uploadPhotoBtn");
 // Estado de la aplicación
 let currentUser = null;
 let editingCampaignId = null;
+let campaignImageBase64 = "";         // Para almacenar la imagen convertida a base64
 let publicCampaigns = [];
 
 // ---------------------------
@@ -452,17 +453,41 @@ extraDataForm?.addEventListener("submit", e => {
   hideExtraDataModal();
 });
 
-// ---------------------------
-// Gestión de Campañas (Crear, Editar, Eliminar, Publicar)
-// ---------------------------
-newCampaignForm?.addEventListener("submit", async e => {
+// ===============================
+// GESTIÓN DE CAMPAÑAS (Crear, Editar, Eliminar, Publicar)
+// ===============================
+
+// --- Conversión de imagen a base64 ---
+// Asigna el input file para la imagen (debe tener id="campaignImage" en el HTML)
+const campaignImageInput = document.getElementById("campaignImage");
+if (campaignImageInput) {
+  campaignImageInput.addEventListener("change", function () {
+    const file = this.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = function () {
+        campaignImageBase64 = reader.result; // Guarda la imagen en formato base64
+        console.log("Imagen convertida a base64:", campaignImageBase64);
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+}
+
+// --- Guardar Campaña como "Borrador" en localStorage ---
+newCampaignForm?.addEventListener("submit", e => {
   e.preventDefault();
   if (!currentUser) return;
+
+  // Recoger los valores del formulario
   const titulo = e.target.titulo.value.trim();
   const descripcion = e.target.descripcion.value.trim();
   const meta = e.target.meta.value.trim();
-  const imagen = e.target.imagen.value.trim();
+  // Para la imagen, usamos la variable global campaignImageBase64 (ya convertida)
+  const imagen = campaignImageBase64;
   const video = e.target.video.value.trim();
+
+  // Validaciones básicas
   if (!titulo || !descripcion || !meta || !imagen) {
     alert("Por favor completa todos los campos requeridos");
     return;
@@ -472,54 +497,60 @@ newCampaignForm?.addEventListener("submit", async e => {
     alert("La meta debe ser un número positivo");
     return;
   }
-  try {
-    const campaignData = {
-      creador: currentUser.email,
-      titulo,
-      descripcion,
-      meta: metaNumber,
-      imagen,
-      video,
-      estado: editingCampaignId ? undefined : "privada",
-      vistas: editingCampaignId ? undefined : 0,
-      aportes: editingCampaignId ? undefined : 0,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      createdAt: editingCampaignId ? undefined : firebase.firestore.FieldValue.serverTimestamp()
-    };
-    if (editingCampaignId) {
-      await db.collection("campaigns").doc(editingCampaignId).update(campaignData);
-      alert("Campaña actualizada correctamente");
-      editingCampaignId = null;
-    } else {
-      await db.collection("campaigns").add(campaignData);
-      alert("Campaña guardada correctamente");
-    }
-    newCampaignForm.reset();
-    hideElement(newCampaignForm);
-    loadUserCampaigns();
-    loadPublicCampaigns();
-  } catch (err) {
-    console.error(err);
-    alert("Error al guardar la campaña");
+
+  // Armar el objeto campaña
+  const campaignData = {
+    id: editingCampaignId ? editingCampaignId : Date.now().toString(),
+    creador: currentUser.email,
+    titulo,
+    descripcion,
+    meta: metaNumber,
+    imagen,
+    video,
+    estado: editingCampaignId ? undefined : "borrador",  // Campaña nueva: estado "borrador"
+    vistas: editingCampaignId ? undefined : 0,
+    aportes: editingCampaignId ? undefined : 0,
+    createdAt: editingCampaignId ? undefined : new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  // Recuperar las campañas guardadas en localStorage o crear un arreglo si no existe
+  let campaigns = JSON.parse(localStorage.getItem("campaigns")) || [];
+  if (editingCampaignId) {
+    // Actualizar campaña existente
+    campaigns = campaigns.map(camp => {
+      if (camp.id === editingCampaignId) {
+        return { ...camp, ...campaignData, id: editingCampaignId };
+      }
+      return camp;
+    });
+    alert("Campaña actualizada correctamente");
+    editingCampaignId = null;
+  } else {
+    // Agregar campaña nueva
+    campaigns.push(campaignData);
+    alert("Campaña guardada correctamente");
   }
+  localStorage.setItem("campaigns", JSON.stringify(campaigns));
+  newCampaignForm.reset();
+  campaignImageBase64 = "";
+  hideElement(newCampaignForm);
+  loadUserCampaigns();
+  loadPublicCampaigns();
 });
 
+// --- Cargar Campañas del Usuario ---
 async function loadUserCampaigns() {
   if (!currentUser) return;
-  try {
-    const snapshot = await db.collection("campaigns")
-                              .where("creador", "==", currentUser.email)
-                              .get();
-    campaignList.innerHTML = "";
-    snapshot.forEach(doc => {
-      const campaign = { id: doc.id, ...doc.data() };
-      renderUserCampaignCard(campaign);
-    });
-  } catch (err) {
-    console.error(err);
-  }
+  let campaigns = JSON.parse(localStorage.getItem("campaigns")) || [];
+  let userCampaigns = campaigns.filter(camp => camp.creador === currentUser.email);
+  campaignList.innerHTML = "";
+  userCampaigns.forEach(campaign => {
+    renderUserCampaignCard(campaign);
+  });
 }
 
+// --- Renderizar Tarjeta de Campaña en el Panel de Usuario ---
 function renderUserCampaignCard(campaign) {
   const card = document.createElement("div");
   card.className = "border p-4 rounded shadow bg-gray-50 relative";
@@ -543,78 +574,66 @@ function renderUserCampaignCard(campaign) {
   campaignList.appendChild(card);
 }
 
+// --- Editar Campaña ---
 async function editCampaign(id) {
-  try {
-    const doc = await db.collection("campaigns").doc(id).get();
-    const campaign = { id: doc.id, ...doc.data() };
-    if (!campaign || campaign.creador !== currentUser.email) return;
-    newCampaignForm.titulo.value = campaign.titulo;
-    newCampaignForm.descripcion.value = campaign.descripcion;
-    newCampaignForm.meta.value = campaign.meta;
-    newCampaignForm.imagen.value = campaign.imagen;
-    newCampaignForm.video.value = campaign.video || "";
-    editingCampaignId = id;
-    showElement(newCampaignForm);
-  } catch (err) {
-    console.error(err);
-  }
+  let campaigns = JSON.parse(localStorage.getItem("campaigns")) || [];
+  const campaign = campaigns.find(camp => camp.id === id);
+  if (!campaign || campaign.creador !== currentUser.email) return;
+  newCampaignForm.titulo.value = campaign.titulo;
+  newCampaignForm.descripcion.value = campaign.descripcion;
+  newCampaignForm.meta.value = campaign.meta;
+  // Para la imagen, guardamos el valor en campaignImageBase64; nota: no se puede asignar valor al input file
+  campaignImageBase64 = campaign.imagen;
+  newCampaignForm.video.value = campaign.video || "";
+  editingCampaignId = id;
+  showElement(newCampaignForm);
 }
 
+// --- Eliminar Campaña ---
 async function deleteCampaign(id) {
   if (!confirm("¿Estás seguro de eliminar esta campaña?")) return;
-  try {
-    await db.collection("campaigns").doc(id).delete();
-    alert("Campaña eliminada");
-    loadUserCampaigns();
-    loadPublicCampaigns();
-  } catch (err) {
-    console.error(err);
-    alert("Error al eliminar la campaña");
-  }
+  let campaigns = JSON.parse(localStorage.getItem("campaigns")) || [];
+  campaigns = campaigns.filter(camp => camp.id !== id);
+  localStorage.setItem("campaigns", JSON.stringify(campaigns));
+  alert("Campaña eliminada");
+  loadUserCampaigns();
+  loadPublicCampaigns();
 }
 
+// --- Publicar Campaña (Simulación de pago) ---
 async function publishCampaign(id) {
   if (!(currentUser.profile && currentUser.profile.subscriptionActive)) {
     alert("No tienes suscripción activa para publicar campañas.");
     return;
   }
-  try {
-    await db.collection("campaigns").doc(id).update({
-      estado: "publico",
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    alert("Campaña publicada");
-    loadUserCampaigns();
-    loadPublicCampaigns();
-  } catch (err) {
-    console.error(err);
-    alert("Error al publicar la campaña");
-  }
-}
-
-// ---------------------------
-// Campañas Públicas y Modal de Postulación
-// ---------------------------
-async function loadPublicCampaigns() {
-  try {
-    const snapshot = await db.collection("campaigns")
-                             .where("estado", "==", "publico")
-                             .get();
-    publicList.innerHTML = "";
-    publicCampaigns = [];
-    snapshot.forEach(doc => {
-      const campaign = { id: doc.id, ...doc.data() };
-      publicCampaigns.push(campaign);
-      renderPublicCampaignCard(campaign);
-    });
-    if (publicList.innerHTML.trim() === "") {
-      publicList.innerHTML = `<p class="text-center text-gray-500">Aún no hay campañas disponibles.</p>`;
+  let campaigns = JSON.parse(localStorage.getItem("campaigns")) || [];
+  campaigns = campaigns.map(camp => {
+    if (camp.id === id) {
+      camp.estado = "publico";
+      camp.updatedAt = new Date().toISOString();
     }
-  } catch (err) {
-    console.error(err);
+    return camp;
+  });
+  localStorage.setItem("campaigns", JSON.stringify(campaigns));
+  alert("Campaña publicada");
+  loadUserCampaigns();
+  loadPublicCampaigns();
+}
+
+// --- Cargar Campañas Públicas ---
+async function loadPublicCampaigns() {
+  let campaigns = JSON.parse(localStorage.getItem("campaigns")) || [];
+  let publicCampaigns = campaigns.filter(camp => camp.estado === "publico");
+  publicList.innerHTML = "";
+  publicCampaigns.forEach(campaign => {
+    renderPublicCampaignCard(campaign);
+  });
+  if (publicList.innerHTML.trim() === "") {
+    publicList.innerHTML = `<p class="text-center text-gray-500">Aún no hay campañas disponibles.</p>`;
   }
 }
 
+// --- Renderizar Tarjeta de Campaña Pública ---
 function renderPublicCampaignCard(campaign) {
   const div = document.createElement("div");
   div.className = "border rounded p-4 shadow";
@@ -628,8 +647,10 @@ function renderPublicCampaignCard(campaign) {
   publicList.appendChild(div);
 }
 
+// --- Abrir Modal de Campaña ---
 function openCampaignModal(id) {
-  const campaign = publicCampaigns.find(x => x.id === id);
+  let campaigns = JSON.parse(localStorage.getItem("campaigns")) || [];
+  const campaign = campaigns.find(camp => camp.id === id);
   if (!campaign) {
     alert("Campaña no encontrada");
     return;
@@ -638,6 +659,7 @@ function openCampaignModal(id) {
   projectModal.classList.remove("hidden");
 }
 
+// --- Postulación a Campaña ---
 async function applyToCampaign(campaignId) {
   const message = applyMessage.value;
   if (!currentUser) {
@@ -645,12 +667,15 @@ async function applyToCampaign(campaignId) {
     return;
   }
   try {
-    await db.collection("applications").add({
+    // Para simular la postulación, guardamos la solicitud en localStorage (o podrías implementar otra lógica)
+    let applications = JSON.parse(localStorage.getItem("applications")) || [];
+    applications.push({
       campaignId,
       applicant: currentUser.email,
       message,
-      date: firebase.firestore.FieldValue.serverTimestamp()
+      date: new Date().toISOString()
     });
+    localStorage.setItem("applications", JSON.stringify(applications));
     alert("Postulación enviada");
     applyMessage.value = "";
     projectModal.classList.add("hidden");
@@ -659,7 +684,6 @@ async function applyToCampaign(campaignId) {
     alert("Error al enviar la postulación");
   }
 }
-
 cancelModalBtn?.addEventListener("click", () => {
   projectModal.classList.add("hidden");
 });
