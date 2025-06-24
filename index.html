@@ -91,7 +91,7 @@
             <hr class="my-2" />
             <!-- Mostrar correo y rol real -->
             <p id="userEmailLabel" class="text-sm text-gray-600">correo@ejemplo.com</p>
-            <p id="userRoleDisplay" class="text-sm text-gray-600 mt-1">Estudiante</p>
+            <p id="userRoleDisplay" class="text-sm text-gray-600 mt-1">ejemplo</p>
             <!-- Enlace para cambiar foto de perfil -->
             <a href="#" id="changeProfilePhoto" class="text-blue-600 underline text-sm block mt-2">Cambiar foto</a>
             <button id="logoutBtn" class="mt-4 bg-red-500 hover:bg-red-600 text-white text-sm px-3 py-1 rounded w-full">
@@ -201,14 +201,17 @@
               <div class="w-full mt-4">
                 <div class="text-sm mb-1">Progreso del perfil: <span id="profileProgress">0%</span></div>
                 <div class="w-full bg-gray-200 h-2 rounded">
-                  <div id="progressBar" class="bg-green-500 h-2 rounded" style="width: 0%;"></div>
+                  <div class="mt-4">
+                    <div class="w-full bg-gray-200 rounded-full h-4">
+                      <div id="profileProgressBar" class="bg-blue-600 h-4 rounded-full text-white text-xs text-center" style="width: 0%">0% completo</div>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div id="paymentModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"></div>
               <!-- Enlaces para editar/completar perfil y cambiar foto -->
               <div class="mt-4 flex flex-col gap-2">
-                <a href="#" id="editProfileLink" class="text-blue-600 underline">Editar perfil</a>
-                <a href="#" id="completeProfileLink" class="text-blue-600 underline">Completar información</a>
+              <a href="#" id="completeProfileLink" class="text-blue-600 underline">Completar información</a>
                 <a href="#" id="changeProfilePhotoLink" class="text-blue-600 underline">Cambiar foto</a>
               </div>
             </div>
@@ -225,6 +228,12 @@
         </div>
         <!-- Botón "Crear Campaña" en el muro (visible solo si el usuario está autenticado) -->
       </section>
+      <!-- Modal para pago de suscripción -->
+        <div id="subscriptionModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"></div>
+
+        <!-- Modal de pago (usado para ambos: publicar campaña y pagar para ver detalles) -->
+        <div id="paymentModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"></div>
+
 
       <!-- Sección de Login (al activarse se ocultan las secciones de campañas) -->
       <section id="login" class="hidden max-w-md mx-auto mt-10 p-6 bg-white rounded shadow-lg border">
@@ -436,5 +445,6 @@
       firebase.initializeApp(firebaseConfig);
     </script>
     <script type="module" src="app.js"></script>
+    <script type="module" src="app2.js"></script>
   </body>
 </html>
