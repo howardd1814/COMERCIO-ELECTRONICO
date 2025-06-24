@@ -176,6 +176,9 @@
             <!-- Lista de campañas propias -->
             <div id="campaignList" class="grid gap-6"></div>
           </div>
+          <!-- Modal para ver detalles de la campaña -->
+          <div id="campaignModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"></div>
+
           <!-- Panel Lateral: Perfil del usuario -->
           <aside class="w-full md:w-1/3 border p-4 rounded shadow">
             <div class="flex flex-col items-center">
@@ -195,6 +198,7 @@
                   <div id="progressBar" class="bg-green-500 h-2 rounded" style="width: 0%;"></div>
                 </div>
               </div>
+              <div id="paymentModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"></div>
               <!-- Enlaces para editar/completar perfil y cambiar foto -->
               <div class="mt-4 flex flex-col gap-2">
                 <a href="#" id="editProfileLink" class="text-blue-600 underline">Editar perfil</a>
@@ -345,6 +349,26 @@
         <div class="flex justify-end gap-2">
           <button id="cancelPayment" class="bg-gray-300 text-gray-800 px-4 py-2 rounded">Cancelar</button>
           <button id="payWithWompi" class="bg-green-600 text-white px-4 py-2 rounded">Pagar con Wompi</button>
+        </div>
+        <!-- Panel del patrocinador -->
+        <div id="investorCampaignList" class="mt-8"></div>
+        <div class="flex gap-4 mb-4">
+          <select id="filterCategoria" class="border p-2 rounded">
+            <option value="">Todas las categorías</option>
+            <option value="tecnologia">Tecnología</option>
+            <option value="salud">Salud</option>
+            <option value="impacto social">Impacto social</option>
+          </select>
+          <select id="filterEstado" class="border p-2 rounded">
+            <option value="">Todos los estados</option>
+            <option value="publicada">Publicadas</option>
+            <option value="finalizada">Finalizadas</option>
+          </select>
+          <select id="filterUniversidad" class="border p-2 rounded">
+            <option value="">Todas las universidades</option>
+            <option value="Universidad 1">Universidad 1</option>
+            <option value="Universidad 2">Universidad 2</option>
+          </select>
         </div>
 
     </main>
