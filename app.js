@@ -184,6 +184,14 @@ function toggleSection(sectionId) {
   });
 }
 
+    document.getElementById("instagramBtn")?.addEventListener("click", () => {
+      window.open(
+        "https://www.instagram.com/platformstudentctg?igsh=MTA1MmFsYW9xam5keQ%3D%3D&utm_source=qr",
+        "_blank"
+      );
+    });
+
+
 completeProfileLink?.addEventListener("click", (e) => {
   e.preventDefault();
   
