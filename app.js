@@ -84,6 +84,18 @@ function hideElement(element) {
   if (element) element.classList.add("hidden");
 }
 
+/**
+ * Devuelve true si el user es patrocinador y tiene suscripción activa
+ */
+function tieneSubscripcionActiva(user) {
+  return (
+    user &&
+    user.profile &&
+    user.profile.userType === 'patrocinador' &&
+    user.profile.subscriptionActive === true
+  );
+}
+
 // ---------------------------
 // Gestión de autenticación y carga de perfil
 // ---------------------------
@@ -133,8 +145,11 @@ firebase.auth().onAuthStateChanged(async user => {
           hideElement(navCampaignsBtn);
           hideElement(publicCreateBtn);
           hideElement(newCampaignForm);
+          showElement(document.getElementById("subscriberBlock"));
+          
         } else {
           showElement(panelCreateBtn);
+          hideElement(document.getElementById("subscriberBlock"));
         }
 
         //  B) Configurar btnCampaigns como portal de campañas
@@ -151,6 +166,7 @@ firebase.auth().onAuthStateChanged(async user => {
         //  C) Oferta de suscripción: solo para patrocinadores sin subscripción
         if (currentUser.role === 'patrocinador' 
             && !currentUser.profile.subscriptionActive) {
+          
           hideElement(navCampaignsBtn);
         } else {
           showElement(navCampaignsBtn);
@@ -166,73 +182,17 @@ firebase.auth().onAuthStateChanged(async user => {
     return;
   }
   
-  let formFields = "";
+  if(currentUser.role === 'patrocinador' || currentUser.profile.userType === 'patrocinador') {
+        // Al hacer clic en el título, mostrar ficha técnica
+      card.querySelector("h4").addEventListener("click", () => showDetailPaymentModal(campaign));
+      
+        const pubBtn = card.querySelector("[data-action='publicar']");
+        if (pubBtn) {
+          // Para campañas que requieren pago (solo estudiantes)
+              pubBtn.addEventListener("click", () => showDetailPaymentModal(campaign.id));
+            campaignList.appendChild(card);
+        }
 
-  if (loggedUser.toLowerCase() === "estudiante" || loggedUser.currentUser.role.toLowerCase() === "estudiante" || loggedUser.role.toLowerCase() === "estudiante") {
-    formFields = `
-      <div>
-        <label for="universidad" class="block text-sm font-medium text-gray-700">Universidad *</label>
-        <input type="text" id="universidad" name="universidad" required class="mt-1 block w-full border rounded-md p-2">
-      </div>
-      <div>
-        <label for="carrera" class="block text-sm font-medium text-gray-700">Carrera o programa académico *</label>
-        <input type="text" id="carrera" name="carrera" required class="mt-1 block w-full border rounded-md p-2">
-      </div>
-      <div>
-        <label for="semestre" class="block text-sm font-medium text-gray-700">Semestre *</label>
-        <input type="text" id="semestre" name="semestre" required class="mt-1 block w-full border rounded-md p-2">
-      </div>
-      <div>
-        <label for="ciudad" class="block text-sm font-medium text-gray-700">Ciudad de residencia *</label>
-        <input type="text" id="ciudad" name="ciudad" required class="mt-1 block w-full border rounded-md p-2">
-      </div>
-      <div>
-        <label for="telefono" class="block text-sm font-medium text-gray-700">Teléfono de contacto</label>
-        <input type="text" id="telefono" name="telefono" class="mt-1 block w-full border rounded-md p-2">
-      </div>
-      <div>
-        <label for="portfolio" class="block text-sm font-medium text-gray-700">Enlace de portafolio / CV</label>
-        <input type="text" id="portfolio" name="portfolio" class="mt-1 block w-full border rounded-md p-2">
-      </div>
-    `;
-  } else if (loggedUser.currentUser.role.toLowerCase() === "patrocinador") {
-    formFields = `
-      <div>
-        <label for="nombre" class="block text-sm font-medium text-gray-700">Nombre de empresa o nombre personal *</label>
-        <input type="text" id="nombre" name="nombre" required class="mt-1 block w-full border rounded-md p-2">
-      </div>
-      <div>
-        <label for="tipoPatrocinador" class="block text-sm font-medium text-gray-700">Tipo de patrocinador *</label>
-        <select id="tipoPatrocinador" name="tipoPatrocinador" required class="mt-1 block w-full border rounded-md p-2">
-          <option value="">Seleccione...</option>
-          <option value="empresa">Empresa</option>
-          <option value="particular">Particular</option>
-        </select>
-      </div>
-      <div>
-        <label for="areaInteres" class="block text-sm font-medium text-gray-700">Área de interés *</label>
-        <select id="areaInteres" name="areaInteres" required class="mt-1 block w-full border rounded-md p-2">
-          <option value="">Seleccione...</option>
-          <option value="tecnologia">Tecnología</option>
-          <option value="salud">Salud</option>
-          <option value="educacion">Educación</option>
-        </select>
-      </div>
-      <div>
-        <label for="presupuesto" class="block text-sm font-medium text-gray-700">Presupuesto estimado de apoyo</label>
-        <input type="number" id="presupuesto" name="presupuesto" class="mt-1 block w-full border rounded-md p-2">
-      </div>
-      <div>
-        <label for="ubicacion" class="block text-sm font-medium text-gray-700">Ciudad o país *</label>
-        <input type="text" id="ubicacion" name="ubicacion" required class="mt-1 block w-full border rounded-md p-2">
-      </div>
-      <div>
-        <label for="correoContacto" class="block text-sm font-medium text-gray-700">Correo de contacto *</label>
-        <input type="email" id="correoContacto" name="correoContacto" required class="mt-1 block w-full border rounded-md p-2">
-      </div>
-    `;
-  } else {
-    formFields = `<p class="text-red-500">El rol del usuario no está definido correctamente.</p>`;
   }
   
   // Inyecta el HTML del formulario en el contenedor del modal
@@ -341,6 +301,21 @@ function logout() {
     alert("Error al cerrar sesión.");
   });
 }
+
+    showElement(document.getElementById("subscribeBtn"));
+
+    // 3) Engancha el botón para invocar showDetailPaymentModal:
+    const subscribeNowBtn = document.getElementById("subscribeBtn");
+    subscribeNowBtn.addEventListener("click", () => {
+      // Simulamos un "campaign" genérico para la suscripción
+      const subscriptionCampaign = {
+        id: "suscripcion",
+        titulo: "Suscripción mensual",
+        descripcion: "Acceso ilimitado a campañas públicas"
+      };
+      showDetailPaymentModal(subscriptionCampaign);
+      
+    });
 
 // ---------------------------
 // Navegación entre secciones
@@ -791,7 +766,7 @@ function showDetailPaymentModal(campaign) {
       alert("Pago realizado con éxito. Ahora podrás ver los detalles.");
       hideElement(modal);
       showCampaignDetails(campaign);
-    }, 3000);
+    }, 300);
   });
 }
 
