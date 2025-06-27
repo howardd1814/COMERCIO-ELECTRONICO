@@ -25,7 +25,6 @@ const authButtons = document.getElementById('authButtons');
 const userBox = document.getElementById('userBox');
 const userNameLabel = document.getElementById('userNameLabel');
 const userEmailLabel = document.getElementById('userEmailLabel');
-const userRoleDisplay =document.getElementById('userRoleDisplay');
 const userDropdown = document.getElementById('userDropdown');
 const logoutBtn = document.getElementById('logoutBtn');
 
@@ -100,7 +99,6 @@ firebase.auth().onAuthStateChanged(async user => {
     // Actualiza la interfaz con el nombre completo y correo
     showUserBox(currentUser);
 
-    
     // Mostrar foto de perfil: si existe foto (almacenada, por ejemplo, en currentUser.photoURL)
     if (user.photoURL) {
       userPhoto.src = user.photoURL;
@@ -128,7 +126,185 @@ firebase.auth().onAuthStateChanged(async user => {
     } else {
       currentUser.profile = JSON.parse(extraData);
       // Actualizar el rol real en el sidebar
-      sidebarUserRole.textContent = currentUser.profile.userType || currentUser.role || "Estudiante" ||"Patrocinador";
+      sidebarUserRole.textContent = currentUser.profile.userType || currentUser.role || "Estudiante" ;
+        //  A) Ocultar el "Crear campaña" de los patrocinadores
+        if (currentUser.profile.userType === 'patrocinador' || currentUser.role=== 'patrocinador') {
+          hideElement(panelCreateBtn);
+          hideElement(navCampaignsBtn);
+          hideElement(publicCreateBtn);
+          hideElement(newCampaignForm);
+        } else {
+          showElement(panelCreateBtn);
+        }
+
+        //  B) Configurar btnCampaigns como portal de campañas
+        navCampaignsBtn.textContent = 
+          currentUser.role === 'estudiante'
+            ? 'Mis Campañas'
+            : 'Explorar Campañas';
+
+        navCampaignsBtn.dataset.section = 
+          currentUser.role === 'estudiante'
+            ? 'panel'
+            : 'muro-publico';
+
+        //  C) Oferta de suscripción: solo para patrocinadores sin subscripción
+        if (currentUser.role === 'patrocinador' 
+            && !currentUser.profile.subscriptionActive) {
+          hideElement(navCampaignsBtn);
+        } else {
+          showElement(navCampaignsBtn);
+        }
+
+        completeProfileLink?.addEventListener("click", (e) => {
+  e.preventDefault();
+  
+  // Recupera el usuario desde localStorage (asegúrate de que se guarde en 'loggedUser')
+  const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
+  if (!loggedUser|| loggedUser.role  || !loggedUser.currentUser.role) {
+    alert("No se encontró información del usuario");
+    return;
+  }
+  
+  let formFields = "";
+
+  if (loggedUser.toLowerCase() === "estudiante" || loggedUser.currentUser.role.toLowerCase() === "estudiante" || loggedUser.role.toLowerCase() === "estudiante") {
+    formFields = `
+      <div>
+        <label for="universidad" class="block text-sm font-medium text-gray-700">Universidad *</label>
+        <input type="text" id="universidad" name="universidad" required class="mt-1 block w-full border rounded-md p-2">
+      </div>
+      <div>
+        <label for="carrera" class="block text-sm font-medium text-gray-700">Carrera o programa académico *</label>
+        <input type="text" id="carrera" name="carrera" required class="mt-1 block w-full border rounded-md p-2">
+      </div>
+      <div>
+        <label for="semestre" class="block text-sm font-medium text-gray-700">Semestre *</label>
+        <input type="text" id="semestre" name="semestre" required class="mt-1 block w-full border rounded-md p-2">
+      </div>
+      <div>
+        <label for="ciudad" class="block text-sm font-medium text-gray-700">Ciudad de residencia *</label>
+        <input type="text" id="ciudad" name="ciudad" required class="mt-1 block w-full border rounded-md p-2">
+      </div>
+      <div>
+        <label for="telefono" class="block text-sm font-medium text-gray-700">Teléfono de contacto</label>
+        <input type="text" id="telefono" name="telefono" class="mt-1 block w-full border rounded-md p-2">
+      </div>
+      <div>
+        <label for="portfolio" class="block text-sm font-medium text-gray-700">Enlace de portafolio / CV</label>
+        <input type="text" id="portfolio" name="portfolio" class="mt-1 block w-full border rounded-md p-2">
+      </div>
+    `;
+  } else if (loggedUser.currentUser.role.toLowerCase() === "patrocinador") {
+    formFields = `
+      <div>
+        <label for="nombre" class="block text-sm font-medium text-gray-700">Nombre de empresa o nombre personal *</label>
+        <input type="text" id="nombre" name="nombre" required class="mt-1 block w-full border rounded-md p-2">
+      </div>
+      <div>
+        <label for="tipoPatrocinador" class="block text-sm font-medium text-gray-700">Tipo de patrocinador *</label>
+        <select id="tipoPatrocinador" name="tipoPatrocinador" required class="mt-1 block w-full border rounded-md p-2">
+          <option value="">Seleccione...</option>
+          <option value="empresa">Empresa</option>
+          <option value="particular">Particular</option>
+        </select>
+      </div>
+      <div>
+        <label for="areaInteres" class="block text-sm font-medium text-gray-700">Área de interés *</label>
+        <select id="areaInteres" name="areaInteres" required class="mt-1 block w-full border rounded-md p-2">
+          <option value="">Seleccione...</option>
+          <option value="tecnologia">Tecnología</option>
+          <option value="salud">Salud</option>
+          <option value="educacion">Educación</option>
+        </select>
+      </div>
+      <div>
+        <label for="presupuesto" class="block text-sm font-medium text-gray-700">Presupuesto estimado de apoyo</label>
+        <input type="number" id="presupuesto" name="presupuesto" class="mt-1 block w-full border rounded-md p-2">
+      </div>
+      <div>
+        <label for="ubicacion" class="block text-sm font-medium text-gray-700">Ciudad o país *</label>
+        <input type="text" id="ubicacion" name="ubicacion" required class="mt-1 block w-full border rounded-md p-2">
+      </div>
+      <div>
+        <label for="correoContacto" class="block text-sm font-medium text-gray-700">Correo de contacto *</label>
+        <input type="email" id="correoContacto" name="correoContacto" required class="mt-1 block w-full border rounded-md p-2">
+      </div>
+    `;
+  } else {
+    formFields = `<p class="text-red-500">El rol del usuario no está definido correctamente.</p>`;
+  }
+  
+  // Inyecta el HTML del formulario en el contenedor del modal
+  const modalContainer = document.getElementById("extraDataModal");
+  modalContainer.innerHTML = `
+    <div class="bg-white p-6 rounded shadow-lg max-w-md w-full">
+      <h3 class="text-xl font-bold mb-4">Completar Información</h3>
+      <form id="profileExtraForm" class="space-y-4">
+        ${formFields}
+        <div class="flex justify-end gap-2">
+          <button type="button" id="cancelExtraBtn" class="bg-gray-300 text-gray-800 px-4 py-2 rounded">Cancelar</button>
+          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Guardar información</button>
+        </div>
+      </form>
+    </div>
+  `;
+  
+  // Muestra el modal removiendo la clase "hidden"
+  modalContainer.classList.remove("hidden");
+  
+  // Evento para el botón "Cancelar" que cierra el modal
+  document.getElementById("cancelExtraBtn").addEventListener("click", () => {
+    modalContainer.classList.add("hidden");
+  });
+  
+  const sponsorBlock = document.createElement('div');
+    sponsorBlock.id = 'sponsorBlock';
+    sponsorBlock.className = 'p-6 text-center bg-yellow-50 rounded shadow';
+    sponsorBlock.innerHTML = `
+      <p class="mb-4">
+        Para explorar y apoyar campañas necesitas una suscripción activa.
+      </p>
+      <button id="subscribeBtn" class="bg-green-600 text-white px-4 py-2 rounded">
+        Suscribirme
+      </button>
+    `;
+
+
+  // Evento para el submit del formulario
+  document.getElementById("profileExtraForm").addEventListener("submit", (evt) => {
+    evt.preventDefault();
+    
+    // Recoger los datos del formulario
+    const formData = new FormData(evt.target);
+    const extraData = {};
+    formData.forEach((value, key) => {
+      extraData[key] = value.trim();
+    });
+    
+    // Validación básica: se omiten los campos opcionales (telefono, portfolio, presupuesto)
+    let valid = true;
+    for (let [key, value] of Object.entries(extraData)) {
+      if (!value && !["telefono", "portfolio", "presupuesto"].includes(key)) {
+        valid = false;
+        break;
+      }
+    }
+    
+    if (!valid) {
+      alert("Por favor completa todos los campos obligatorios.");
+      return;
+    }
+    
+    // Guarda la información en localStorage (o envíala al backend)
+    const profileKey = `userProfile_${loggedUser.uid}`;
+    localStorage.setItem(profileKey, JSON.stringify(extraData));
+    alert("Información guardada correctamente.");
+    
+    // Oculta el modal
+    modalContainer.classList.add("hidden");
+  });
+});
     }
     showElement(navCampaignsBtn);
     showElement(publicCreateBtn);
@@ -144,10 +320,7 @@ firebase.auth().onAuthStateChanged(async user => {
 function showUserBox(user) {
   userNameLabel.textContent = user.username;
   userEmailLabel.textContent = user.email;
-  userRoleDisplay.textContent = user.role;
-  console.log(user.role);
   const sidebarUserName = document.getElementById('sidebarUserName');
-
   if (sidebarUserName) {
     sidebarUserName.textContent = user.username;
   }
@@ -187,140 +360,6 @@ function toggleSection(sectionId) {
     }
   });
 }
-    document.getElementById("instagramBtn")?.addEventListener("click", () => {
-      window.open(
-        "https://www.instagram.com/platformstudentctg?igsh=MTA1MmFsYW9xam5keQ%3D%3D&utm_source=qr",
-        "_blank"
-      );
-    });
-
-  // Función que abre el formulario modal de perfil
-function openProfileForm() {
-  if (!currentUser || currentUser.role.toLowerCase() !== "estudiante") return;
-  // Recupera datos previos (si existen)
-  const profileData = JSON.parse(localStorage.getItem("userProfile")) || {};
-
-  // Contenido del formulario (usa TailwindCSS)
-  const modalContent = `
-    <div class="bg-white p-6 rounded shadow-lg max-w-lg w-full">
-      <h2 class="text-2xl font-bold mb-4">Completar información del perfil</h2>
-      <form id="profileForm" class="space-y-4">
-        <div>
-          <label class="block text-gray-700">Universidad *</label>
-          <input type="text" name="universidad" value="${profileData.universidad || ''}" class="w-full border rounded p-2" required>
-        </div>
-        <div>
-          <label class="block text-gray-700">Semestre actual *</label>
-          <input type="text" name="semestre" value="${profileData.semestre || ''}" class="w-full border rounded p-2" required>
-        </div>
-        <div>
-          <label class="block text-gray-700">Estrato social *</label>
-          <input type="text" name="estrato" value="${profileData.estrato || ''}" class="w-full border rounded p-2" required>
-        </div>
-        <div>
-          <label class="block text-gray-700">Programa académico *</label>
-          <input type="text" name="programa" value="${profileData.programa || ''}" class="w-full border rounded p-2" required>
-        </div>
-        <div>
-          <label class="block text-gray-700">Ciudad de residencia *</label>
-          <input type="text" name="ciudad" value="${profileData.ciudad || ''}" class="w-full border rounded p-2" required>
-        </div>
-        <div>
-          <label class="block text-gray-700">Teléfono de contacto *</label>
-          <input type="text" name="telefono" value="${profileData.telefono || ''}" class="w-full border rounded p-2" required>
-        </div>
-        <div>
-          <label class="block text-gray-700">Enlace a perfil LinkedIn (opcional)</label>
-          <input type="text" name="linkedin" value="${profileData.linkedin || ''}" class="w-full border rounded p-2">
-        </div>
-        <div class="flex justify-end gap-2">
-          <button type="button" id="cancelProfile" class="bg-gray-300 text-gray-800 px-4 py-2 rounded">Cancelar</button>
-          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Guardar</button>
-        </div>
-      </form>
-    </div>
-  `;
-
-  const modal = document.getElementById("profileModal");
-  modal.innerHTML = modalContent;
-  showElement(modal);
-
-  // Listener para cerrar el modal sin guardar
-  document.getElementById("cancelProfile").addEventListener("click", () => {
-    hideElement(modal);
-  });
-
-  // Listener para el envío del formulario
-  document.getElementById("profileForm").addEventListener("submit", function(e) {
-    e.preventDefault();
-    const formData = new FormData(this);
-    // Validar que los campos obligatorios no estén vacíos
-    const universidad = formData.get("universidad").trim();
-    const semestre = formData.get("semestre").trim();
-    const estrato = formData.get("estrato").trim();
-    const programa = formData.get("programa").trim();
-    const ciudad = formData.get("ciudad").trim();
-    const telefono = formData.get("telefono").trim();
-
-    if (!universidad || !semestre || !estrato || !programa || !ciudad || !telefono) {
-      alert("Por favor, completa todos los campos obligatorios");
-      return;
-    }
-
-    // Crear el objeto de perfil (incluyendo el campo opcional)
-    const profile = {
-      universidad,
-      semestre,
-      estrato,
-      programa,
-      ciudad,
-      telefono,
-      linkedin: formData.get("linkedin").trim() || ""
-    };
-
-    // Guardar en localStorage
-    localStorage.setItem("userProfile", JSON.stringify(profile));
-    alert("Información guardada");
-    hideElement(modal);
-    updateProfileProgressBar();
-  });
-}
-
-// Función para actualizar la barra de progreso del perfil
-function updateProfileProgressBar() {
-  // Definimos 7 campos en total (6 obligatorios y 1 opcional)
-  const totalFields = 7;
-  const profile = JSON.parse(localStorage.getItem("userProfile")) || {};
-  let filled = 0;
-  if (profile.universidad && profile.universidad.trim() !== "") filled++;
-  if (profile.semestre && profile.semestre.trim() !== "") filled++;
-  if (profile.estrato && profile.estrato.trim() !== "") filled++;
-  if (profile.programa && profile.programa.trim() !== "") filled++;
-  if (profile.ciudad && profile.ciudad.trim() !== "") filled++;
-  if (profile.telefono && profile.telefono.trim() !== "") filled++;
-  if (profile.linkedin && profile.linkedin.trim() !== "") filled++;
-  
-  // Calcula el porcentaje
-  let percentage = Math.round((filled / totalFields) * 100);
-  
-  // Actualiza la barra de progreso (asumiendo un elemento con id "profileProgressBar")
-  const progressBar = document.getElementById("profileProgressBar");
-  if (progressBar) {
-    progressBar.style.width = percentage + "%";
-    progressBar.textContent = percentage + "% completo";
-  }
-}
-
-// Agrega un listener al enlace "Completar información"
-document.getElementById("completeProfileLink")?.addEventListener("click", (e) => {
-  e.preventDefault();
-  if (currentUser && currentUser.role.toLowerCase() === "estudiante") {
-    openProfileForm();
-  }
-});
-
-// Llama a la función de actualización de la barra al cargar la página (si se tienen datos)
-updateProfileProgressBar();
 
 function setupAuthButtons() {
   const loginBtn = document.getElementById("loginBtn");
@@ -391,7 +430,7 @@ document.getElementById("registerForm")?.addEventListener("submit", async e => {
   const username = e.target.username.value.trim();
   const email = e.target.email.value.trim();
   const password = e.target.password.value;
-  const role = e.target.role?.value || "estudiante" || "patrocinador";
+  const role = e.target.role?.value || "estudiante";
   if (!username || !email || !password) {
     alert("Todos los campos son obligatorios");
     return;
@@ -689,6 +728,7 @@ function showCampaignDetails(campaign) {
     hideElement(document.getElementById("createCampaignSection"));
   }
 
+
 function showPaymentModal(campaignId) {
   // Solo se debe mostrar para estudiantes, si ese es el comportamiento requerido
   const modal = document.getElementById("paymentModal");
@@ -703,37 +743,6 @@ function showPaymentModal(campaignId) {
   `;
   
   showElement(modal);
-
-  function checkSubscriptionForPatrocinador() {
-  // Suponemos que currentUser.subscriptionActive existe (true o false)
-  if (!currentUser.subscriptionActive) {
-    const modal = document.getElementById("subscriptionModal");
-    modal.innerHTML = `
-      <div class="bg-white p-6 rounded shadow-lg max-w-md w-full">
-        <p class="mb-4 text-center">Debes pagar una suscripción para explorar campañas de estudiantes.</p>
-        <div class="flex justify-end gap-2">
-          <button id="cancelSubscription" class="bg-gray-300 text-gray-800 px-4 py-2 rounded">Cancelar</button>
-          <button id="paySubscription" class="bg-green-600 text-white px-4 py-2 rounded">Pagar suscripción</button>
-        </div>
-      </div>
-    `;
-    showElement(modal);
-
-          document.getElementById("cancelSubscription").addEventListener("click", () => hideElement(modal));
-          document.getElementById("paySubscription").addEventListener("click", () => {
-            window.open("https://checkout.wompi.co/l/test_VPOS_Em91ui", "_blank");
-            // Simular el pago después de 3 segundos
-            setTimeout(() => {
-              currentUser.subscriptionActive = true;
-              localStorage.setItem("currentUser", JSON.stringify(currentUser));
-              hideElement(modal);
-              loadInvestorPanel();
-            }, 3000);
-          });
-          return false;
-        }
-        return true;
-      }
   
   document.getElementById("cancelPayment").addEventListener("click", () => hideElement(modal));
   
@@ -757,16 +766,9 @@ function showPaymentModal(campaignId) {
       // Actualizamos las listas: tanto la de campañas del creador como la pública
       loadUserCampaigns();
       loadPublicCampaigns();
-    }, 1000);
+    }, 100);
   });
 }
-
-    if (currentUser && currentUser.role.toLowerCase() === "patrocinador") {
-      hideElement(document.getElementById("createCampaignSection"));
-    } else {
-      showElement(document.getElementById("createCampaignSection"));
-    }
-
 
 function showDetailPaymentModal(campaign) {
   const modal = document.getElementById("paymentModal");
@@ -780,12 +782,11 @@ function showDetailPaymentModal(campaign) {
     </div>
   `;
   showElement(modal);
-  
   document.getElementById("cancelDetailPayment").addEventListener("click", () => hideElement(modal));
-  
   document.getElementById("payForDetails").addEventListener("click", () => {
+    // Abre la pasarela de pago en una nueva pestaña (simulación)
     window.open("https://checkout.wompi.co/l/test_VPOS_Em91ui", "_blank");
-    // Simular el pago de 40.000 COP
+    // Simula un retraso de 3 segundos para confirmar el pago
     setTimeout(() => {
       alert("Pago realizado con éxito. Ahora podrás ver los detalles.");
       hideElement(modal);
@@ -793,7 +794,6 @@ function showDetailPaymentModal(campaign) {
     }, 3000);
   });
 }
-
 
 // --- Cargar Campañas Públicas ---
 // Se muestran todas las campañas con estado "publicada" (de todos los usuarios).
@@ -809,6 +809,7 @@ function loadPublicCampaigns() {
   }
 }
 
+// --- Renderizar Tarjeta de Campaña Pública ---
 function renderPublicCampaignCard(campaign) {
   const div = document.createElement("div");
   div.className = "border rounded p-4 shadow mb-4";
@@ -818,30 +819,67 @@ function renderPublicCampaignCard(campaign) {
     <p class="text-gray-700">${campaign.descripcion.slice(0, 100)}...</p>
     <p class="font-semibold">Meta: $${campaign.meta}</p>
   `;
-  // En patrocinadores, al pulsar el título se requiere pagar 40.000 COP para ver detalles.
-  const titleEl = div.querySelector("h3");
-  if (currentUser && currentUser.role.toLowerCase() === "patrocinador") {
-    titleEl.addEventListener("click", () => showDetailPaymentModal(campaign));
-  } else {
-    titleEl.addEventListener("click", () => showCampaignDetails(campaign));
+    // --- Apoyar Emprendimiento (solo para patroc. con subscripción) ---
+  if (currentUser?.profile.userType === 'patrocinador') {
+    if (hasActiveSubscription(currentUser)) {
+      const btnApoyar = document.createElement('button');
+      btnApoyar.textContent = 'Apoyar emprendimiento';
+      btnApoyar.className = 'bg-purple-600 text-white px-3 py-1 rounded mt-2';
+      btnApoyar.addEventListener('click', () => {
+        const supportKey = `apoyos_${campaign.id}_${currentUser.uid}`;
+        if (!localStorage.getItem(supportKey)) {
+          localStorage.setItem(
+            supportKey,
+            JSON.stringify({ date: Date.now() })
+          );
+          alert('¡Gracias por apoyar este emprendimiento!');
+        } else {
+          alert('Ya has apoyado este emprendimiento.');
+        }
+      });
+      card.appendChild(btnApoyar);
+    } else {
+      const btnSub = document.createElement('button');
+      btnSub.textContent = 'Suscribirme';
+      btnSub.className = 'bg-green-600 text-white px-3 py-1 rounded mt-2';
+      btnSub.addEventListener('click', () => {
+        window.open(
+          'https://checkout.wompi.co/l/test_VPOS_Em91ui',
+          '_blank'
+        );
+      });
+      card.appendChild(btnSub);
+    }
   }
-  // Agregar botón "Apoyar proyecto" para patrocinadores (si ya pagó la suscripción)
-  if (currentUser && currentUser.role.toLowerCase() === "patrocinador" && currentUser.subscriptionActive) {
-    const btnApoyar = document.createElement("button");
-    btnApoyar.textContent = "Apoyar proyecto";
-    btnApoyar.className = "bg-purple-600 text-white px-3 py-1 rounded mt-2";
-    btnApoyar.addEventListener("click", () => {
-      // Simula el aporte (aquí puedes guardar apoyo en localStorage o mostrar un mensaje)
-      alert("¡Has apoyado el proyecto!");
+
+  // Título clickeable para ver detalles
+  div.querySelector("h3").addEventListener("click", () => showCampaignDetails(campaign));
+  // Si el usuario es patrocinador (inversionista), agregar botón "Apoyar proyecto"
+    if (currentUser && currentUser.role === "patrocinador") {
+        const apoyarBtn = document.createElement("button");
+        apoyarBtn.textContent = "Apoyar proyecto";
+        apoyarBtn.className = "bg-purple-600 text-white px-3 py-1 rounded mt-2";
+        apoyarBtn.addEventListener("click", () => {
+      let campaigns = JSON.parse(localStorage.getItem("campaigns")) || [];
+      campaigns = campaigns.map(camp => {
+        if (camp.id === campaign.id) {
+          camp.aportes = (camp.aportes || 0) + 1;
+        }
+        return camp;
+      });
+      localStorage.setItem("campaigns", JSON.stringify(campaigns));
+      // Registrar la categoría en el historial de interacciones, para simular la recomendación
+      interactionHistory.push(campaign.categoria);
+      localStorage.setItem("interactionHistory", JSON.stringify(interactionHistory));
+      alert("¡Gracias por apoyar el proyecto!");
+      loadPublicCampaigns();
     });
-    div.appendChild(btnApoyar);
+    div.appendChild(apoyarBtn);
   }
   publicList.appendChild(div);
 }
 
-
 function loadInvestorPanel() {
-  if (!checkSubscriptionForPatrocinador()) return;  // Si no ha pagado, sale y muestra el modal de suscripción
   let campaigns = JSON.parse(localStorage.getItem("campaigns")) || [];
   // Se muestran todas las campañas que estén publicadas
   let visibleCampaigns = campaigns.filter(camp => camp.estado === "publicada");
