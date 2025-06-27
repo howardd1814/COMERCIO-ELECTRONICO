@@ -747,28 +747,50 @@ function showPaymentModal(campaignId) {
 
 function showDetailPaymentModal(campaign) {
   const modal = document.getElementById("paymentModal");
-  modal.innerHTML = `
+  const body  = modal.querySelector(".modal-body");
+  body.innerHTML = `
     <div class="bg-white p-6 rounded shadow-lg max-w-md w-full">
-      <p class="mb-4 text-center">Para ver los detalles de esta campaña, debes pagar 40.000 COP.</p>
+      <p class="mb-4 text-center">
+        Para ver los detalles de esta campaña, debes pagar 40.000 COP.
+      </p>
       <div class="flex justify-end gap-2">
-        <button id="cancelDetailPayment" class="bg-gray-300 text-gray-800 px-4 py-2 rounded">Cancelar</button>
-        <button id="payForDetails" class="bg-green-600 text-white px-4 py-2 rounded">Pagar 40.000 COP</button>
+        <button id="cancelDetailPayment" class="bg-gray-300 px-4 py-2 rounded">Cancelar</button>
+        <button id="payForDetails" class="bg-green-600 text-white px-4 py-2 rounded">
+          Pagar 40.000 COP
+        </button>
       </div>
     </div>
   `;
   showElement(modal);
-  document.getElementById("cancelDetailPayment").addEventListener("click", () => hideElement(modal));
-  document.getElementById("payForDetails").addEventListener("click", () => {
-    // Abre la pasarela de pago en una nueva pestaña (simulación)
+
+  document.getElementById("cancelDetailPayment").onclick = () =>
+    hideElement(modal);
+
+  document.getElementById("payForDetails").onclick = () => {
     window.open("https://checkout.wompi.co/l/test_VPOS_Em91ui", "_blank");
-    // Simula un retraso de 3 segundos para confirmar el pago
     setTimeout(() => {
-      alert("Pago realizado con éxito. Ahora podrás ver los detalles.");
+      // 1) Marcamos la suscripción activa
+      currentUser.profile.subscriptionActive = true;
+      const key  = `userProfile_${currentUser.uid}`;
+      const extra = JSON.parse(localStorage.getItem(key)) || {};
+      extra.subscriptionActive = true;
+      localStorage.setItem(key, JSON.stringify(extra));
+
+      // 2) Ocultamos el banner y el botón de suscripción
+      hideElement(document.getElementById("subscriberBlock"));
+      hideElement(document.getElementById("subscribeBtn"));
+
+      // 3) Cerramos el modal y mostramos detalles
       hideElement(modal);
+      alert("Pago exitoso. Ahora puedes ver los detalles.");
       showCampaignDetails(campaign);
-    }, 300);
-  });
+
+      // 4) (Opcional) Recargamos campañas públicas o el panel de inversores
+      loadPublicCampaigns();
+    }, 3000);
+  };
 }
+
 
 // --- Cargar Campañas Públicas ---
 // Se muestran todas las campañas con estado "publicada" (de todos los usuarios).
