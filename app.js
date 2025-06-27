@@ -787,7 +787,7 @@ function showDetailPaymentModal(campaign) {
 
       // 4) (Opcional) Recargamos campañas públicas o el panel de inversores
       loadPublicCampaigns();
-    }, 3000);
+    }, 30);
   };
 }
 
